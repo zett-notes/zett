@@ -1,5 +1,4 @@
 import { useSetAtom } from "jotai"
-import urlcat from "urlcat"
 import { globalStateMachineAtom } from "../global-state"
 import { Button, ButtonProps } from "./button"
 
@@ -17,12 +16,8 @@ export function SignInButton(props: ButtonProps) {
       variant="primary"
       {...props}
       onClick={async (event) => {
-        window.location.href = urlcat("https://github.com/login/oauth/authorize", {
-          client_id: import.meta.env.VITE_GITHUB_CLIENT_ID,
-          state: window.location.href,
-          scope: "repo,gist,user:email",
-        })
-
+        // Let edge function handle the redirect
+        window.location.href = `/github-auth?state=${encodeURIComponent(window.location.href)}`
         props.onClick?.(event)
       }}
     >

@@ -10,6 +10,7 @@ import { CodeProps, LiProps, Position } from "react-markdown/lib/ast-to-react"
 import { useNetworkState } from "react-use"
 import rehypeKatex from "rehype-katex"
 import remarkGfm from "remark-gfm"
+import remarkBreaks from "remark-breaks"
 import remarkMath from "remark-math"
 import { z } from "zod"
 import { notesAtom } from "../global-state"
@@ -168,7 +169,7 @@ function MarkdownContent({ children, className }: { children: string; className?
       className={cx("markdown", className)}
       remarkPlugins={[
         remarkGfm,
-        // remarkEmoji,
+        remarkBreaks,  // Handle line breaks properly
         remarkWikilink,
         remarkEmbed,
         remarkTag,
@@ -839,6 +840,7 @@ function DateLink({ date, text, className }: DateLinkProps) {
     <HoverCard.Root>
       <HoverCard.Trigger asChild>
         <Link
+          ref={React.createRef()}
           className={className}
           to="/notes/$"
           params={{ _splat: date }}
@@ -886,6 +888,7 @@ function WeekLink({ week, text, className }: WeekLinkProps) {
     <HoverCard.Root>
       <HoverCard.Trigger asChild>
         <Link
+          ref={React.createRef()}
           className={className}
           to="/notes/$"
           params={{ _splat: week }}

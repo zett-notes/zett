@@ -10,8 +10,8 @@
   "author": "Szymon Rączka",
   "type": "module",
   "scripts": {
-    "dev": "vite dev --host",
-    "dev:netlify": "netlify dev",
+    "dev": "vite dev --host -- --define:import.meta.env.VITE_CORS_PROXY='\"https://numen.netlify.app/cors-proxy\"'",
+    "dev:netlify": "netlify dev -- --define:import.meta.env.VITE_CORS_PROXY='\"http://localhost:5173/cors-proxy\"'",
     "dev:storybook": "storybook dev -p 6006",
     "build": "tsc && vite build",
     "build:storybook": "storybook build",

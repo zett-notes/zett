@@ -18,12 +18,20 @@ type GitAuth = {
   }
 }
 
+// Dodajemy customowy HTTP handler przez proxy
+const httpProxy = {
+  request: async (url: string, options: any) => {
+    const proxyUrl = `${import.meta.env.VITE_CORS_PROXY}/${url}`
+    return http.request(proxyUrl, options)
+  }
+}
+
 export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
   const options: Parameters<typeof git.clone>[0] = {
     fs,
-    http,
+    http: httpProxy,
     dir: REPO_DIR,
-    url: `https://github.com/${repo.owner}/${repo.name}.git`,
+    url: `${import.meta.env.VITE_CORS_PROXY}/https://github.com/${repo.owner}/${repo.name}.git`,
     ref: DEFAULT_BRANCH,
     singleBranch: true,
     depth: 1,
@@ -75,9 +83,9 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
 export async function gitPull(user: GitHubUser, repo: GitHubRepository) {
   const options: Parameters<typeof git.pull>[0] = {
     fs,
-    http,
+    http: httpProxy,
     dir: REPO_DIR,
-    url: `https://github.com/${repo.owner}/${repo.name}.git`,
+    url: `${import.meta.env.VITE_CORS_PROXY}/https://github.com/${repo.owner}/${repo.name}.git`,
     ref: DEFAULT_BRANCH,
     singleBranch: true,
     onMessage: (message) => console.debug("onMessage", message),
@@ -112,9 +120,9 @@ export async function gitPull(user: GitHubUser, repo: GitHubRepository) {
 export async function gitPush(user: GitHubUser, repo: GitHubRepository) {
   const options: Parameters<typeof git.push>[0] = {
     fs,
-    http,
+    http: httpProxy,
     dir: REPO_DIR,
-    url: `https://github.com/${repo.owner}/${repo.name}.git`,
+    url: `${import.meta.env.VITE_CORS_PROXY}/https://github.com/${repo.owner}/${repo.name}.git`,
     ref: DEFAULT_BRANCH,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),

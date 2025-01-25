@@ -12,7 +12,7 @@ interface GitHubUser {
 export function SignInButton(props: ButtonProps) {
   const send = useSetAtom(globalStateMachineAtom)
 
-  const handleAuth = async (event: React.MouseEvent) => {
+  const handleAuth = async (event: React.MouseEvent<HTMLButtonElement>) => {
     try {
       // Try PAT auth first (development)
       const response = await fetch("/github-auth")

@@ -6,6 +6,20 @@ import type { Config } from "https://edge.netlify.com"
 export default async (request: Request) => {
   try {
     const url = new URL(request.url)
+    // In development, use PAT directly
+    if (Deno.env.get("GITHUB_PAT")) {
+      const token = Deno.env.get("GITHUB_PAT")
+      const { login, name, email } = await getUser(token)
+      
+      const redirectUrl = new URL(url.searchParams.get("state") || "https://uselumen.com")
+      redirectUrl.searchParams.set("user_token", token)
+      redirectUrl.searchParams.set("user_login", login)
+      redirectUrl.searchParams.set("user_name", name)
+      redirectUrl.searchParams.set("user_email", email)
+      
+      return Response.redirect(`${redirectUrl}`)
+    }
+
     const code = url.searchParams.get("code")
     const state = url.searchParams.get("state")
 

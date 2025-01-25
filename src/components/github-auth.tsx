@@ -19,10 +19,22 @@ export function SignInButton(props: ButtonProps) {
         }, null, 2))
 
         // Sign in with a personal access token in local development
-        if (import.meta.env.DEV && import.meta.env.GITHUB_PAT) {
+        if (import.meta.env.DEV) {
           try {
-            const token = import.meta.env.GITHUB_PAT
-            const { login, name, email } = await getUser(token)
+            // Use existing github-auth endpoint with state param to get user data
+            const state = window.location.href
+            const response = await fetch(`/github-auth?state=${encodeURIComponent(state)}`)
+            if (!response.ok) throw new Error('Auth failed')
+            
+            // Extract user data from redirect URL
+            const redirectUrl = new URL(response.headers.get('Location') || '')
+            const token = redirectUrl.searchParams.get('user_token')
+            const login = redirectUrl.searchParams.get('user_login')
+            const name = redirectUrl.searchParams.get('user_name')
+            const email = redirectUrl.searchParams.get('user_email')
+            
+            if (!token || !login || !name || !email) throw new Error('Missing user data')
+            
             send({ type: "SIGN_IN", githubUser: { token, login, name, email } })
           } catch (error) {
             console.error(error)

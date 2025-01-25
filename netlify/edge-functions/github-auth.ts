@@ -15,7 +15,7 @@ export default async (request: Request) => {
         return new Response("GitHub Client ID not configured", { status: 403 })
       }
       return Response.redirect(
-        `https://github.com/login/oauth/authorize?client_id=${clientId}&state=${state}&scope=repo,gist,user:email`
+        `https://github.com/login/oauth/authorize?client_id=${clientId}&state=${state}&scope=repo,gist,user:email,workflow`
       )
     }
 

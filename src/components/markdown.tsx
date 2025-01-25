@@ -191,9 +191,21 @@ function MarkdownContent({ children, className }: { children: string; className?
         remarkWikilink,
         remarkEmbed,
         remarkTag,
-        [remarkMath, { singleDollarTextMath: false }],
+        [remarkMath, { 
+          singleDollarTextMath: false,
+          strict: false 
+        }],
       ] as Options["remarkPlugins"]}
-      rehypePlugins={[rehypeKatex] as Options["rehypePlugins"]}
+      rehypePlugins={[
+        [rehypeKatex, {
+          throwOnError: false,
+          strict: false,
+          trust: true,
+          macros: {
+            "\\eqref": "\\href{#1}{}",  // Handle equation references
+          }
+        }]
+      ] as Options["rehypePlugins"]}
       components={{
         a: Anchor,
         img: Image,

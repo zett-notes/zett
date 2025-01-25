@@ -5,8 +5,7 @@ import { isToday } from "date-fns"
 import { useAtomValue } from "jotai"
 import { selectAtom } from "jotai/utils"
 import React, { useMemo } from "react"
-import ReactMarkdown from "react-markdown"
-import type { Components, Options } from "react-markdown"
+import ReactMarkdown, { Options, Components } from "react-markdown"
 import type { ComponentPropsWithoutRef } from "react"
 import type { Position } from "unist"
 import type { Plugin } from "unified"
@@ -72,10 +71,6 @@ const MarkdownContext = React.createContext<{
 }>({
   markdown: "",
 })
-
-const TaskListItemContext = React.createContext<{
-  position?: Position
-} | null>(null)
 
 export const Markdown = React.memo(
   ({ children, hideFrontmatter = false, onChange }: MarkdownProps) => {
@@ -212,6 +207,16 @@ function MarkdownContent({ children, className }: { children: string; className?
       {children}
     </ReactMarkdown>
   )
+}
+
+type CustomComponents = Components & {
+  wikilink: React.ComponentType<NoteEmbedProps>
+  embed: React.ComponentType<NoteEmbedProps>
+  tag: React.ComponentType<TagProps>
+}
+
+type TagProps = {
+  name: string
 }
 
 function BookCover({ isbn }: { isbn: string }) {
@@ -521,29 +526,6 @@ function withSuffix(num: number): string {
   }
 }
 
-function Code({ className, inline, children }: CodeProps) {
-  const match = /language-(\w+)/.exec(className || "")
-
-  if (inline) {
-    return <code className={className}>{children}</code>
-  }
-
-  return (
-    <div className="relative group">
-      <pre className={cx("overflow-x-auto", className)}>
-        <code className={className}>
-          {children}
-        </code>
-      </pre>
-      {children && (
-        <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <CopyButton text={children?.toString() || ""} />
-        </div>
-      )}
-    </div>
-  )
-}
-
 function Anchor(props: React.ComponentPropsWithoutRef<"a">) {
   const ref = React.useRef<HTMLAnchorElement>(null)
   const [isFirst, setIsFirst] = React.useState(false)
@@ -643,14 +625,41 @@ function Image(props: React.ComponentPropsWithoutRef<"img">) {
   return <img {...props} />
 }
 
-function ListItem({ ordered, index, checked, className, children, position, ...rest }: LiProps) {
+function Code({ className, inline, children }: CodeProps) {
+  const match = /language-(\w+)/.exec(className || "")
+
+  if (inline) {
+    return <code className={className}>{children}</code>
+  }
+
+  return (
+    <div className="relative group">
+      <pre className={cx("overflow-x-auto", className)}>
+        <code className={className}>
+          {children}
+        </code>
+      </pre>
+      {children && (
+        <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <CopyButton text={children?.toString() || ""} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+const TaskListItemContext = React.createContext<{
+  position?: Position
+} | null>(null)
+
+function ListItem({ ordered, index, checked, className, children, position }: LiProps) {
   const isTaskListItem = className?.includes("task-list-item")
 
   if (isTaskListItem) {
     return (
       // eslint-disable-next-line react/jsx-no-constructed-context-values
       <TaskListItemContext.Provider value={{ position }}>
-        <li className={className} {...rest}>
+        <li className={className}>
           <CheckboxInput checked={checked} />
           {children}
         </li>
@@ -658,7 +667,7 @@ function ListItem({ ordered, index, checked, className, children, position, ...r
     )
   }
 
-  return <li className={className} {...rest}>{children}</li>
+  return <li className={className}>{children}</li>
 }
 
 function CheckboxInput({ checked }: { checked?: boolean }) {
@@ -668,6 +677,7 @@ function CheckboxInput({ checked }: { checked?: boolean }) {
 
   return (
     <Checkbox
+      ref={checkedRef}
       checked={checked}
       disabled={!onChange}
       onCheckedChange={(checked) => {

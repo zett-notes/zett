@@ -4,12 +4,13 @@ import { Context } from "@netlify/edge-functions"
 
 export default async (request: Request, context: Context) => {
   try {
-    if (!context.env.GITHUB_PAT) {
+    const token = Deno.env.get("GITHUB_PAT")
+    if (!token) {
       return new Response("GitHub PAT not configured", { status: 403 })
     }
 
-    const { login, name, email } = await getUser(context.env.GITHUB_PAT)
-    return new Response(JSON.stringify({ token: context.env.GITHUB_PAT, login, name, email }), {
+    const { login, name, email } = await getUser(token)
+    return new Response(JSON.stringify({ token, login, name, email }), {
       headers: { "Content-Type": "application/json" }
     })
   } catch (error) {

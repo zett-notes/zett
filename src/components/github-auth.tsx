@@ -19,9 +19,9 @@ export function SignInButton(props: ButtonProps) {
         }, null, 2))
 
         // Sign in with a personal access token in local development
-        if (import.meta.env.DEV && import.meta.env.VITE_GITHUB_PAT) {
+        if (import.meta.env.DEV && import.meta.env.GITHUB_PAT) {
           try {
-            const token = import.meta.env.VITE_GITHUB_PAT
+            const token = import.meta.env.GITHUB_PAT
             const { login, name, email } = await getUser(token)
             send({ type: "SIGN_IN", githubUser: { token, login, name, email } })
           } catch (error) {

@@ -43,10 +43,10 @@ export function OAuthCallback() {
     const email = params.get("user_email")
 
     if (token && login && email) {
-      // Prevent double processing
-      const processed = (window as Window & { authProcessed?: boolean }).authProcessed
-      if (!processed) {
-        window.authProcessed = true
+      // Prevent double processing using a global flag
+      const w = window as typeof window & { _authProcessed?: boolean }
+      if (!w._authProcessed) {
+        w._authProcessed = true
         
         send({ 
           type: "SIGN_IN", 

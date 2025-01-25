@@ -2,20 +2,12 @@ import { useSetAtom } from "jotai"
 import { globalStateMachineAtom } from "../global-state"
 import { Button, ButtonProps } from "./button"
 
-interface GitHubUser {
-  token: string
-  login: string
-  name: string
-  email: string
-}
-
 export function SignInButton(props: ButtonProps) {
-  const send = useSetAtom(globalStateMachineAtom)
   return (
     <Button
       variant="primary"
       {...props}
-      onClick={async (event) => {
+      onClick={(event) => {
         // Let edge function handle the redirect
         window.location.href = `/github-auth?state=${encodeURIComponent(window.location.href)}`
         props.onClick?.(event)

@@ -226,14 +226,14 @@ export function remarkTag(): Plugin<[Options?], Root> {
   return function(this: Processor) {
     const data = this.data() as Record<string, unknown[]>
 
-    add("micromarkExtensions", tag())
-    add("fromMarkdownExtensions", tagFromMarkdown())
-    add("toMarkdownExtensions", tagHtml())
-
-    function add(field: string, value: unknown) {
+    const add = (field: string, value: unknown) => {
       const list = data[field] ? data[field] : (data[field] = [])
       list.push(value)
     }
+
+    add("micromarkExtensions", tag())
+    add("fromMarkdownExtensions", tagFromMarkdown())
+    add("toMarkdownExtensions", tagHtml())
 
     return (tree: Root) => tree
   }

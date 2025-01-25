@@ -9,7 +9,7 @@ import {
   Tokenizer,
   Construct,
 } from "micromark-util-types"
-import { Plugin } from "unified"
+import { Plugin, Processor } from "unified"
 import { Node } from "unist"
 
 const types = {
@@ -359,19 +359,21 @@ export function wikilinkFromMarkdown(): FromMarkdownExtension {
   }
 }
 
-/**
- * Remark plugin
- * Safely add micromark and fromMarkdown extensions to this.data().
- */
-export function remarkWikilink(): ReturnType<Plugin<[], Root>> {
-  // @ts-ignore - we know this will be bound to the processor instance
-  const data = this.data()
+interface Options {}
 
-  add("micromarkExtensions", wikilink())
-  add("fromMarkdownExtensions", wikilinkFromMarkdown())
+export function remarkWikilink(): Plugin<[Options?], Root> {
+  return function(this: Processor) {
+    const data = this.data() as Record<string, unknown[]>
 
-  function add(field: string, value: unknown) {
-    const list = data[field] ? data[field] : (data[field] = [])
-    list.push(value)
+    const add = (field: string, value: unknown) => {
+      const list = data[field] ? data[field] : (data[field] = [])
+      list.push(value)
+    }
+
+    add("micromarkExtensions", wikilink())
+    add("fromMarkdownExtensions", wikilinkFromMarkdown())
+    add("toMarkdownExtensions", wikilinkHtml())
+
+    return (tree: Root) => tree
   }
 }

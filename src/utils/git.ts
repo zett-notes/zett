@@ -13,67 +13,6 @@ type GitAuth = {
   password?: string
   oauth2format?: 'github' | 'gitlab' | 'bitbucket'
   token?: string
-  headers?: {
-    'Authorization': string
-    'User-Agent': string
-  }
-}
-
-// Add custom HTTP handler through proxy
-const httpProxy: HttpClient = {
-  request: async ({ url, method, headers, body }) => {
-    // Remove protocol from the URL before adding it to proxy
-    const urlWithoutProtocol = url.replace(/^https?:\/\//, '')
-    const proxyUrl = `${import.meta.env.VITE_CORS_PROXY}/${urlWithoutProtocol}`
-    
-    console.log('Original URL:', url)
-    console.log('Proxy URL:', proxyUrl)
-    
-    return http.request({
-      url: proxyUrl,
-      method,
-      headers,
-      body
-    })
-  }
-}
-
-function getAuthHeaders(user: GitHubUser, url: string): GitAuth {
-  // Get the proxy URL that will be used - remove protocol first
-  const urlWithoutProtocol = url.replace(/^https?:\/\//, '')
-  const proxyUrl = `${import.meta.env.VITE_CORS_PROXY}/${urlWithoutProtocol}`
-
-  console.log('Auth URL:', url)
-  console.log('Auth Proxy URL:', proxyUrl)
-
-  // For git-upload-pack, use Basic auth with username and token
-  if (proxyUrl.includes('git-upload-pack')) {
-    const base64Credentials = btoa(`${user.name}:${user.token}`)
-    return {
-      headers: {
-        'Authorization': `Basic ${base64Credentials}`,
-        'User-Agent': 'git/lumen'
-      }
-    }
-  }
-
-  // For API endpoints, use Bearer token for OAuth2 or token for PAT
-  if (user.tokenType === 'oauth2') {
-    return {
-      headers: {
-        'Authorization': `Bearer ${user.token}`,
-        'User-Agent': 'git/lumen'
-      }
-    }
-  }
-
-  // PAT with token prefix
-  return {
-    headers: {
-      'Authorization': `token ${user.token}`,
-      'User-Agent': 'git/lumen'
-    }
-  }
 }
 
 export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
@@ -87,17 +26,17 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     depth: 1,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: () => {
+    onAuth: (): GitAuth => {
       if (user.tokenType === 'oauth2') {
         return {
-          oauth2format: 'github' as const,
+          oauth2format: 'github',
           token: user.token
-        } as const
+        }
       }
       // PAT
       return {
         token: user.token
-      } as const
+      }
     },
   }
 
@@ -132,17 +71,17 @@ export async function gitPull(user: GitHubUser, repo: GitHubRepository) {
     singleBranch: true,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: () => {
+    onAuth: (): GitAuth => {
       if (user.tokenType === 'oauth2') {
         return {
-          oauth2format: 'github' as const,
+          oauth2format: 'github',
           token: user.token
-        } as const
+        }
       }
       // PAT
       return {
         token: user.token
-      } as const
+      }
     },
   }
 
@@ -160,17 +99,17 @@ export async function gitPush(user: GitHubUser, repo: GitHubRepository) {
     ref: DEFAULT_BRANCH,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: () => {
+    onAuth: (): GitAuth => {
       if (user.tokenType === 'oauth2') {
         return {
-          oauth2format: 'github' as const,
+          oauth2format: 'github',
           token: user.token
-        } as const
+        }
       }
       // PAT
       return {
         token: user.token
-      } as const
+      }
     },
   }
 

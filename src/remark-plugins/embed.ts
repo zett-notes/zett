@@ -374,11 +374,15 @@ export function embedFromMarkdown(): FromMarkdownExtension {
 }
 
 /**
- * Remark plugin
- * Safely add micromark and fromMarkdown extensions to this.data().
+ * Remark plugin factory to handle embeds.
+ *
+ * @param options { enableToMarkdownExtension?: boolean }
+ *        When true, adds an HTML extension (for testing/serialization).
  */
-export function remarkEmbed(): Plugin<[Options?], Root> {
-  return function (options?: Options) {
+export function remarkEmbed(
+  options: { enableToMarkdownExtension?: boolean } = {},
+): Plugin<[Options?], Root> {
+  return function (passedOptions?: Options) {
     return (tree: Root, file: VFile): Root => {
       const data = file.data || (file.data = {})
 
@@ -390,7 +394,11 @@ export function remarkEmbed(): Plugin<[Options?], Root> {
 
       add("micromarkExtensions", embed())
       add("fromMarkdownExtensions", embedFromMarkdown())
-      add("toMarkdownExtensions", embedHtml())
+
+      if (options.enableToMarkdownExtension) {
+        // Only add the HTML extension when explicitly requested
+        add("toMarkdownExtensions", embedHtml())
+      }
 
       return tree
     }

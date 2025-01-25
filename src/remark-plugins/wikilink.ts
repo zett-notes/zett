@@ -364,7 +364,15 @@ export function wikilinkFromMarkdown(): FromMarkdownExtension {
   }
 }
 
-export function remarkWikilink(): Plugin<[], Root> {
+/**
+ * Remark plugin factory to handle wikilinks.
+ *
+ * @param options { enableToMarkdownExtension?: boolean }
+ *        When true, adds an HTML extension (for testing/serialization).
+ */
+export function remarkWikilink(
+  options: { enableToMarkdownExtension?: boolean } = {},
+): Plugin<[], Root> {
   return function () {
     return (tree: Root, file: VFile): Root => {
       const data = file.data || (file.data = {})
@@ -377,7 +385,11 @@ export function remarkWikilink(): Plugin<[], Root> {
 
       add("micromarkExtensions", wikilink())
       add("fromMarkdownExtensions", wikilinkFromMarkdown())
-      add("toMarkdownExtensions", wikilinkHtml())
+
+      if (options.enableToMarkdownExtension) {
+        // Only add the HTML extension when explicitly requested
+        add("toMarkdownExtensions", wikilinkHtml())
+      }
 
       return tree
     }

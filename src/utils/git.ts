@@ -30,9 +30,9 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     onAuth: (): GitAuth => {
       if (user.tokenType === 'oauth2') {
         return {
-          // GitHub OAuth2: token as username, x-oauth-basic as password
-          username: user.token,
-          password: 'x-oauth-basic'
+          // GitHub OAuth2: oauth2 as username, token as password
+          username: 'oauth2',
+          password: user.token
         }
       }
       // PAT
@@ -74,9 +74,9 @@ export async function gitPull(user: GitHubUser) {
     onAuth: (): GitAuth => {
       if (user.tokenType === 'oauth2') {
         return {
-          // GitHub OAuth2: token as username, x-oauth-basic as password
-          username: user.token,
-          password: 'x-oauth-basic'
+          // GitHub OAuth2: oauth2 as username, token as password
+          username: 'oauth2',
+          password: user.token
         }
       }
       // PAT
@@ -101,9 +101,9 @@ export async function gitPush(user: GitHubUser) {
     onAuth: (): GitAuth => {
       if (user.tokenType === 'oauth2') {
         return {
-          // GitHub OAuth2: token as username, x-oauth-basic as password
-          username: user.token,
-          password: 'x-oauth-basic'
+          // GitHub OAuth2: oauth2 as username, token as password
+          username: 'oauth2',
+          password: user.token
         }
       }
       // PAT

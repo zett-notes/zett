@@ -23,12 +23,9 @@ export default async (request: Request) => {
       }
 
       const state = url.searchParams.get("state") || "/"
-      const authUrl = new URL("https://github.com/login/oauth/authorize")
-      authUrl.searchParams.set("client_id", clientId)
-      authUrl.searchParams.set("state", state)
-      authUrl.searchParams.set("scope", "repo,gist,user:email")
-      
-      return Response.redirect(authUrl.toString())
+      return Response.redirect(
+        `https://github.com/login/oauth/authorize?client_id=${clientId}&state=${encodeURIComponent(state)}&scope=repo,gist,user:email`
+      )
     }
 
     // Exchange code for token
@@ -45,24 +42,28 @@ export default async (request: Request) => {
       }),
     })
 
-    const { error, access_token: token } = await response.json()
-    if (error || !token) {
-      throw new Error(error || "No access token received")
+    const data = await response.json()
+    if (data.error || !data.access_token) {
+      throw new Error(data.error || "No access token received")
     }
 
     // Get user info
-    const { login, name, email } = await getUser(token)
+    const { login, name, email } = await getUser(data.access_token)
     
-    // Redirect back with user info
+    // Get state (return URL)
     const state = url.searchParams.get("state") || "/"
-    const redirectUrl = new URL(state)
-    redirectUrl.searchParams.set("user_token", token)
-    redirectUrl.searchParams.set("user_login", login)
-    redirectUrl.searchParams.set("user_name", name || "")
-    redirectUrl.searchParams.set("user_email", email)
+    const returnUrl = new URL(state)
     
-    return Response.redirect(redirectUrl.toString())
+    // Add user info to URL
+    returnUrl.searchParams.set("user_token", data.access_token)
+    returnUrl.searchParams.set("user_login", login)
+    returnUrl.searchParams.set("user_name", name || "")
+    returnUrl.searchParams.set("user_email", email)
+    
+    return Response.redirect(returnUrl.toString())
+
   } catch (error) {
+    console.error("Auth error:", error)
     return new Response(error.message, { status: 500 })
   }
 }

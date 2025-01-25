@@ -523,6 +523,29 @@ function withSuffix(num: number): string {
   }
 }
 
+function Code({ className, inline, children }: CodeProps) {
+  const match = /language-(\w+)/.exec(className || "")
+
+  if (inline) {
+    return <code className={className}>{children}</code>
+  }
+
+  return (
+    <div className="relative group">
+      <pre className={cx("overflow-x-auto", className)}>
+        <code className={className}>
+          {children}
+        </code>
+      </pre>
+      {children && (
+        <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <CopyButton text={children?.toString() || ""} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Anchor(props: React.ComponentPropsWithoutRef<"a">) {
   const ref = React.useRef<HTMLAnchorElement>(null)
   const [isFirst, setIsFirst] = React.useState(false)
@@ -620,29 +643,6 @@ function Image(props: React.ComponentPropsWithoutRef<"img">) {
 
   // eslint-disable-next-line jsx-a11y/alt-text
   return <img {...props} />
-}
-
-function Code({ className, inline, children, ...rest }: CodeProps) {
-  const match = /language-(\w+)/.exec(className || "")
-
-  if (inline) {
-    return <code className={className} {...rest}>{children}</code>
-  }
-
-  return (
-    <div className="relative group">
-      <pre className={cx("overflow-x-auto", className)}>
-        <code className={className} {...rest}>
-          {children}
-        </code>
-      </pre>
-      {children && (
-        <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <CopyButton text={children?.toString() || ""} />
-        </div>
-      )}
-    </div>
-  )
 }
 
 function ListItem({ ordered, index, checked, className, children, position, ...rest }: LiProps) {

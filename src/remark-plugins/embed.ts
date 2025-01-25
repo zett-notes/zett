@@ -370,9 +370,8 @@ export function embedFromMarkdown(): FromMarkdownExtension {
  */
 export function remarkEmbed(): Plugin<[Options?], Root> {
   return function(this: Processor) {
-    const data = this.data() as Record<string, unknown[]>
-
     const add = (field: string, value: unknown) => {
+      const data = this.data() as Record<string, unknown[]>
       const list = data[field] ? data[field] : (data[field] = [])
       list.push(value)
     }

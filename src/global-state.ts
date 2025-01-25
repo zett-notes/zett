@@ -356,15 +356,17 @@ function createGlobalStateMachine() {
         },
         pull: async (context) => {
           if (!context.githubUser) throw new Error("Not signed in")
+          if (!context.githubRepo) throw new Error("No repository selected")
 
-          await gitPull(context.githubUser)
+          await gitPull(context.githubUser, context.githubRepo)
 
           return { markdownFiles: await getMarkdownFilesFromFs(REPO_DIR) }
         },
         push: async (context) => {
           if (!context.githubUser) throw new Error("Not signed in")
+          if (!context.githubRepo) throw new Error("No repository selected")
 
-          await gitPush(context.githubUser)
+          await gitPush(context.githubUser, context.githubRepo)
         },
         checkStatus: async () => {
           return { isSynced: await isRepoSynced() }

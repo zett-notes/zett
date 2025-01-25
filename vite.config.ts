@@ -52,7 +52,4 @@ export default defineConfig({
     }),
     nodePolyfills(),
   ],
-  define: {
-    'import.meta.env.GITHUB_PAT': JSON.stringify(process.env.GITHUB_PAT || ''),
-  },
 })

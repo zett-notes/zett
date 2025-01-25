@@ -22,7 +22,7 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     dir: REPO_DIR,
     // Use official isomorphic-git CORS proxy
     corsProxy: "https://cors.isomorphic-git.org",
-    url: `https://github.com/${repo.owner}/${repo.name}`,
+    url: `https://api.github.com/repos/${repo.owner}/${repo.name}`,
     ref: DEFAULT_BRANCH,
     singleBranch: true,
     depth: 1,

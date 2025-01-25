@@ -4,8 +4,6 @@
 
 [build.environment]
   NODE_VERSION = "20.11.0"
-  # TODO: Find a better way to handle this in different environments
-  VITE_CORS_PROXY = "https://numen.netlify.app/cors-proxy"
 
 [[edge_functions]]
   path = "/github-auth"

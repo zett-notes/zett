@@ -372,25 +372,14 @@ export function wikilinkFromMarkdown(): FromMarkdownExtension {
 export function remarkWikilink(
   options: { enableToMarkdownExtension?: boolean } = {},
 ): Plugin<[], Root> {
-  return function () {
+  return function() {
     return (tree: Root, file: VFile): Root => {
-      const data = file.data || (file.data = {})
-      
-      const add = (field: string, value: unknown) => {
-        const store = data as Record<string, unknown[]>
-        store[field] = store[field] || []
-        store[field].push(value)
+      const add = () => {
+        file.data.links = file.data.links || []
+        file.data.dates = file.data.dates || []
+        return tree
       }
-
-      add("micromarkExtensions", wikilink())
-      add("fromMarkdownExtensions", wikilinkFromMarkdown())
-
-      if (options.enableToMarkdownExtension) {
-        // Only add the HTML extension when explicitly requested
-        add("toMarkdownExtensions", wikilinkHtml())
-      }
-
-      return tree
+      return add()
     }
   }
 }

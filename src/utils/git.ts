@@ -20,10 +20,15 @@ type GitAuth = {
 }
 
 // Dodajemy customowy HTTP handler przez proxy
-const httpProxy = {
-  request: async (url: string, options: any) => {
-    const proxyUrl = `${import.meta.env.VITE_CORS_PROXY}/${url}`
-    return http.request(proxyUrl, options)
+const httpProxy: HttpClient = {
+  request: async ({ url, method, headers, body }) => {
+    const proxyUrl = `${import.meta.env.VITE_CORS_PROXY}/${url.replace(/^https?:\/\//, '')}`
+    return http.request({
+      url: proxyUrl,
+      method,
+      headers,
+      body
+    })
   }
 }
 

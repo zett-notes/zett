@@ -8,6 +8,7 @@ import React, { useMemo } from "react"
 import ReactMarkdown from "react-markdown"
 import type { Components, Options } from "react-markdown"
 import type { ComponentPropsWithoutRef } from "react"
+import type { Element } from "hast"
 import type { Position } from "unist"
 import type { Plugin } from "unified"
 import type { Root } from "mdast"
@@ -166,6 +167,7 @@ export const Markdown = React.memo(
 type CodeProps = ComponentPropsWithoutRef<"code"> & {
   inline?: boolean
   children?: React.ReactNode
+  node?: Element
 }
 
 type LiProps = ComponentPropsWithoutRef<"li"> & {
@@ -173,6 +175,7 @@ type LiProps = ComponentPropsWithoutRef<"li"> & {
   index?: number
   checked?: boolean
   children?: React.ReactNode
+  node?: Element
 }
 
 function isObjectEmpty(obj: Record<string, unknown>) {
@@ -197,7 +200,7 @@ function MarkdownContent({ children, className }: { children: string; className?
         img: Image,
         input: CheckboxInput,
         li: ListItem,
-        pre: ({ children }) => <>{children}</>,
+        pre: ({ children }) => <div className="relative group">{children}</div>,
         code: Code,
         wikilink: NoteLink,
         embed: NoteEmbed,
@@ -625,17 +628,17 @@ function Image(props: React.ComponentPropsWithoutRef<"img">) {
   return <img {...props} />
 }
 
-function Code({ className, inline, children }: CodeProps) {
+function Code({ className, inline, children, node, ...rest }: CodeProps) {
   const match = /language-(\w+)/.exec(className || "")
 
   if (inline) {
-    return <code className={className}>{children}</code>
+    return <code className={className} {...rest}>{children}</code>
   }
 
   return (
     <div className="relative group">
       <pre className={cx("overflow-x-auto", className)}>
-        <code className={className}>
+        <code className={className} {...rest}>
           {children}
         </code>
       </pre>
@@ -652,14 +655,14 @@ const TaskListItemContext = React.createContext<{
   position?: Position
 } | null>(null)
 
-function ListItem({ ordered, index, checked, className, children }: LiProps) {
+function ListItem({ ordered, index, checked, className, children, node, ...rest }: LiProps) {
   const isTaskListItem = className?.includes("task-list-item")
 
   if (isTaskListItem) {
     return (
       // eslint-disable-next-line react/jsx-no-constructed-context-values
-      <TaskListItemContext.Provider value={{ position: undefined }}>
-        <li className={className}>
+      <TaskListItemContext.Provider value={{ position: node?.position }}>
+        <li className={className} {...rest}>
           <CheckboxInput checked={checked} />
           {children}
         </li>
@@ -667,7 +670,7 @@ function ListItem({ ordered, index, checked, className, children }: LiProps) {
     )
   }
 
-  return <li className={className}>{children}</li>
+  return <li className={className} {...rest}>{children}</li>
 }
 
 function CheckboxInput({ checked }: { checked?: boolean }) {

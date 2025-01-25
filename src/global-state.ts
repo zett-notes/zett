@@ -291,7 +291,7 @@ function createGlobalStateMachine() {
             // Save user metadata to localStorage
             localStorage.setItem(GITHUB_USER_KEY, JSON.stringify({ 
               token, 
-              tokenType: 'oauth2',
+              tokenType: 'oauth2' as const,
               login, 
               name, 
               email 
@@ -311,7 +311,13 @@ function createGlobalStateMachine() {
               }`,
             )
 
-            return { githubUser: { token, tokenType: 'oauth2', login, name, email } }
+            return { githubUser: { 
+              token, 
+              tokenType: 'oauth2' as const, 
+              login, 
+              name, 
+              email 
+            } }
           }
 
           // Next, check localStorage for user metadata

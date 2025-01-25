@@ -90,14 +90,14 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     onAuth: () => {
       if (user.tokenType === 'oauth2') {
         return {
-          oauth2format: 'github',
+          oauth2format: 'github' as const,
           token: user.token
-        }
+        } as const
       }
       // PAT
       return {
         token: user.token
-      }
+      } as const
     },
   }
 
@@ -135,14 +135,14 @@ export async function gitPull(user: GitHubUser, repo: GitHubRepository) {
     onAuth: () => {
       if (user.tokenType === 'oauth2') {
         return {
-          oauth2format: 'github',
+          oauth2format: 'github' as const,
           token: user.token
-        }
+        } as const
       }
       // PAT
       return {
         token: user.token
-      }
+      } as const
     },
   }
 
@@ -163,14 +163,14 @@ export async function gitPush(user: GitHubUser, repo: GitHubRepository) {
     onAuth: () => {
       if (user.tokenType === 'oauth2') {
         return {
-          oauth2format: 'github',
+          oauth2format: 'github' as const,
           token: user.token
-        }
+        } as const
       }
       // PAT
       return {
         token: user.token
-      }
+      } as const
     },
   }
 

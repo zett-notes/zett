@@ -1,4 +1,5 @@
 /// <reference lib="deno.ns" />
+import type { Config } from "https://edge.netlify.com"
 
 // Reference: https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
 export default async (request: Request) => {
@@ -88,6 +89,6 @@ async function getUser(token: string) {
   return { login, name, email: primaryEmail.email }
 }
 
-export const config = {
+export const config: Config = {
   path: "/github-auth"
 }

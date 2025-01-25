@@ -8,6 +8,17 @@ import { ErrorIcon16, LoadingIcon16 } from "./icons"
 import { RadioGroup } from "./radio-group"
 import { TextInput } from "./text-input"
 
+interface GitHubErrorResponse {
+  message: string
+}
+
+interface GitHubRepoResponse {
+  name: string
+  owner: {
+    login: string
+  }
+}
+
 type RepoFormProps = {
   className?: string
   onSubmit?: (repo: GitHubRepository) => void
@@ -51,11 +62,11 @@ export function RepoForm({ className, onSubmit, onCancel }: RepoFormProps) {
           throw new Error("Repository already exists.")
         }
 
-        const data = await response.json()
+        const data = await response.json() as GitHubErrorResponse
         throw new Error(data.message || "Failed to create repository. Please try again.")
       }
 
-      const repo = await response.json()
+      const repo = await response.json() as GitHubRepoResponse
       
       // 1 second delay to allow GitHub API to catch up
       await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -89,11 +100,11 @@ export function RepoForm({ className, onSubmit, onCancel }: RepoFormProps) {
           throw new Error("Repository does not exist or you do not have access.")
         }
 
-        const data = await response.json()
+        const data = await response.json() as GitHubErrorResponse
         throw new Error(data.message || "Something went wrong.")
       }
 
-      const repo = await response.json()
+      const repo = await response.json() as GitHubRepoResponse
       send({ type: "SELECT_REPO", githubRepo: { owner: repo.owner.login, name: repo.name } })
       onSubmit?.({ owner: repo.owner.login, name: repo.name })
       setError(null)

@@ -1,4 +1,5 @@
 import { useSetAtom } from "jotai"
+import urlcat from "urlcat"
 import { globalStateMachineAtom } from "../global-state"
 import { Button, ButtonProps } from "./button"
 
@@ -11,28 +12,20 @@ interface GitHubUser {
 
 export function SignInButton(props: ButtonProps) {
   const send = useSetAtom(globalStateMachineAtom)
-
-  const handleAuth = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    try {
-      // Try PAT auth first (development)
-      const response = await fetch("/github-auth")
-      if (response.ok) {
-        const user = await response.json() as GitHubUser
-        send({ type: "SIGN_IN", githubUser: user })
-        return
-      }
-
-      // If PAT fails, start OAuth flow (production)
-      const state = window.location.href
-      window.location.href = `/github-auth?state=${encodeURIComponent(state)}`
-    } catch (error) {
-      console.error("Auth failed:", error)
-    }
-    props.onClick?.(event)
-  }
-
   return (
-    <Button variant="primary" {...props} onClick={handleAuth}>
+    <Button
+      variant="primary"
+      {...props}
+      onClick={async (event) => {
+        window.location.href = urlcat("https://github.com/login/oauth/authorize", {
+          client_id: import.meta.env.VITE_GITHUB_CLIENT_ID,
+          state: window.location.href,
+          scope: "repo,gist,user:email",
+        })
+
+        props.onClick?.(event)
+      }}
+    >
       Sign in with GitHub
     </Button>
   )

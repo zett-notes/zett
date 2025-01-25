@@ -15,6 +15,7 @@ import rehypeKatex from "rehype-katex"
 import remarkGfm from "remark-gfm"
 import remarkBreaks from "remark-breaks"
 import remarkMath from "remark-math"
+import "katex/dist/katex.min.css"
 import { z } from "zod"
 import { notesAtom } from "../global-state"
 import { UPLOADS_DIR } from "../hooks/attach-file"
@@ -189,9 +190,21 @@ function MarkdownContent({ children, className }: { children: string; className?
         remarkWikilink,
         remarkEmbed,
         remarkTag,
-        [remarkMath, { singleDollarTextMath: false }],
+        [remarkMath, { 
+          singleDollarTextMath: false,
+          strict: false 
+        }],
       ] as Options["remarkPlugins"]}
-      rehypePlugins={[rehypeKatex] as Options["rehypePlugins"]}
+      rehypePlugins={[
+        [rehypeKatex, {
+          throwOnError: false,
+          strict: false,
+          trust: true,
+          macros: {
+            "\\eqref": "\\href{#1}{}",  // Handle equation references
+          }
+        }]
+      ] as Options["rehypePlugins"]}
       components={{
         a: Anchor,
         img: Image,

@@ -20,7 +20,18 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     depth: 1,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: () => ({ headers: { Authorization: `Bearer ${user.token}` } }),
+    onAuth: () => {
+      if (user.tokenType === 'oauth2') {
+        return {
+          oauth2format: 'github',
+          token: user.token
+        }
+      }
+      // PAT
+      return {
+        token: user.token
+      }
+    },
   }
 
   // Wipe file system
@@ -52,7 +63,18 @@ export async function gitPull(user: GitHubUser) {
     singleBranch: true,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: () => ({ headers: { Authorization: `Bearer ${user.token}` } }),
+    onAuth: () => {
+      if (user.tokenType === 'oauth2') {
+        return {
+          oauth2format: 'github',
+          token: user.token
+        }
+      }
+      // PAT
+      return {
+        token: user.token
+      }
+    },
   }
 
   const stopTimer = startTimer("git pull")
@@ -67,7 +89,18 @@ export async function gitPush(user: GitHubUser) {
     dir: REPO_DIR,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: () => ({ headers: { Authorization: `Bearer ${user.token}` } }),
+    onAuth: () => {
+      if (user.tokenType === 'oauth2') {
+        return {
+          oauth2format: 'github',
+          token: user.token
+        }
+      }
+      // PAT
+      return {
+        token: user.token
+      }
+    },
   }
 
   const stopTimer = startTimer("git push")

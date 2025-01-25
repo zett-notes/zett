@@ -382,25 +382,13 @@ export function embedFromMarkdown(): FromMarkdownExtension {
 export function remarkEmbed(
   options: { enableToMarkdownExtension?: boolean } = {},
 ): Plugin<[Options?], Root> {
-  return function (passedOptions?: Options) {
+  return function(options?: Options) {
     return (tree: Root, file: VFile): Root => {
-      const data = file.data || (file.data = {})
-
-      const add = (field: string, value: unknown) => {
-        const store = data as Record<string, unknown[]>
-        store[field] = store[field] || []
-        store[field].push(value)
+      const add = () => {
+        file.data.embeds = file.data.embeds || []
+        return tree
       }
-
-      add("micromarkExtensions", embed())
-      add("fromMarkdownExtensions", embedFromMarkdown())
-
-      if (options.enableToMarkdownExtension) {
-        // Only add the HTML extension when explicitly requested
-        add("toMarkdownExtensions", embedHtml())
-      }
-
-      return tree
+      return add()
     }
   }
 }

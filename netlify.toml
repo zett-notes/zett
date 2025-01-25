@@ -1,0 +1,14 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20.11.0"
+
+[[edge_functions]]
+  path = "/github-auth"
+  function = "github-auth"
+
+[[edge_functions]]
+  path = "/cors-proxy/*"
+  function = "cors-proxy"

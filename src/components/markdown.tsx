@@ -6,7 +6,7 @@ import { useAtomValue } from "jotai"
 import { selectAtom } from "jotai/utils"
 import React, { useMemo } from "react"
 import ReactMarkdown from "react-markdown"
-import type { Components } from "react-markdown"
+import type { Components, Options } from "react-markdown"
 import type { ComponentPropsWithoutRef } from "react"
 import type { Position } from "unist"
 import type { Plugin } from "unified"
@@ -167,7 +167,6 @@ export const Markdown = React.memo(
 
 type CodeProps = ComponentPropsWithoutRef<"code"> & {
   inline?: boolean
-  className?: string
   children?: React.ReactNode
 }
 
@@ -175,9 +174,7 @@ type LiProps = ComponentPropsWithoutRef<"li"> & {
   ordered?: boolean
   index?: number
   checked?: boolean
-  className?: string
   children?: React.ReactNode
-  position?: Position
 }
 
 function isObjectEmpty(obj: Record<string, unknown>) {
@@ -189,14 +186,14 @@ function MarkdownContent({ children, className }: { children: string; className?
     <ReactMarkdown
       className={cx("markdown", className)}
       remarkPlugins={[
-        remarkGfm as unknown as Plugin<[], Root>,
-        remarkBreaks as unknown as Plugin<[], Root>,  // Handle line breaks properly
-        remarkWikilink as unknown as Plugin<[], Root>,
-        remarkEmbed as unknown as Plugin<[], Root>,
-        remarkTag as unknown as Plugin<[], Root>,
-        [remarkMath as unknown as Plugin<[], Root>, { singleDollarTextMath: false }],
-      ]}
-      rehypePlugins={[rehypeKatex as unknown as Plugin<[], Root>]}
+        remarkGfm,
+        remarkBreaks,  // Handle line breaks properly
+        remarkWikilink,
+        remarkEmbed,
+        remarkTag,
+        [remarkMath, { singleDollarTextMath: false }],
+      ] as Options["remarkPlugins"]}
+      rehypePlugins={[rehypeKatex] as Options["rehypePlugins"]}
       components={{
         a: Anchor,
         img: Image,
@@ -207,7 +204,7 @@ function MarkdownContent({ children, className }: { children: string; className?
         wikilink: NoteLink,
         embed: NoteEmbed,
         tag: TagLink,
-      } as Partial<CustomComponents>}
+      } as Partial<Components>}
     >
       {children}
     </ReactMarkdown>
@@ -657,13 +654,13 @@ const TaskListItemContext = React.createContext<{
   position?: Position
 } | null>(null)
 
-function ListItem({ ordered, index, checked, className, children, position }: LiProps) {
+function ListItem({ ordered, index, checked, className, children }: LiProps) {
   const isTaskListItem = className?.includes("task-list-item")
 
   if (isTaskListItem) {
     return (
       // eslint-disable-next-line react/jsx-no-constructed-context-values
-      <TaskListItemContext.Provider value={{ position }}>
+      <TaskListItemContext.Provider value={{ position: undefined }}>
         <li className={className}>
           <CheckboxInput checked={checked} />
           {children}

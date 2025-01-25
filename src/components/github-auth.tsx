@@ -10,6 +10,10 @@ export function SignInButton(props: ButtonProps) {
       variant="primary"
       {...props}
       onClick={async (event) => {
+        console.log("DEV:", import.meta.env.DEV)
+        console.log("PROD:", import.meta.env.PROD)
+        console.log("CLIENT_ID:", import.meta.env.VITE_GITHUB_CLIENT_ID)
+
         // Sign in with a personal access token in local development
         if (import.meta.env.DEV && import.meta.env.VITE_GITHUB_PAT) {
           try {
@@ -27,6 +31,8 @@ export function SignInButton(props: ButtonProps) {
           state: window.location.href,
           scope: "repo,gist,user:email",
         })
+
+        console.log("Redirecting to OAuth:", window.location.href)
 
         props.onClick?.(event)
       }}

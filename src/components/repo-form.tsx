@@ -76,9 +76,12 @@ export function RepoForm({ className, onSubmit, onCancel }: RepoFormProps) {
     try {
       setIsLoading(true)
 
-      // Ensure repo exists
+      // Ensure repo exists and get its details
       const response = await fetch(`https://api.github.com/repos/${owner}/${name}`, {
-        headers: { Authorization: `token ${githubUser.token}` },
+        headers: { 
+          Authorization: `Bearer ${githubUser.token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
       })
 
       if (!response.ok) {
@@ -86,14 +89,13 @@ export function RepoForm({ className, onSubmit, onCancel }: RepoFormProps) {
           throw new Error("Repository does not exist or you do not have access.")
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { message } = (await response.json()) as any
-
-        throw new Error(message || "Something went wrong.")
+        const data = await response.json()
+        throw new Error(data.message || "Something went wrong.")
       }
 
-      send({ type: "SELECT_REPO", githubRepo: { owner, name } })
-      onSubmit?.({ owner, name })
+      const repo = await response.json()
+      send({ type: "SELECT_REPO", githubRepo: { owner: repo.owner.login, name: repo.name } })
+      onSubmit?.({ owner: repo.owner.login, name: repo.name })
       setError(null)
     } catch (error) {
       setError(error as Error)

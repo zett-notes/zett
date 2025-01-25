@@ -302,7 +302,7 @@ declare module "micromark-util-types" {
 
 /** MDAST extension (tokens -> MDAST) */
 export function wikilinkFromMarkdown(): FromMarkdownExtension {
-  const enter: Handle = function(this: CompileContext, token: Token) {
+  const enter = function(this: CompileContext, token: Token) {
     if (token.type === "wikilink") {
       const node: WikilinkNode = {
         type: "wikilink",
@@ -319,13 +319,17 @@ export function wikilinkFromMarkdown(): FromMarkdownExtension {
       // @ts-ignore - we know this is safe because we've declared the type in mdast
       this.enter(node, token)
     } else if (token.type === "wikilinkId" || token.type === "wikilinkText") {
-      const textNode: Text = { type: "text", value: "" }
+      const textNode: Text = { 
+        type: "text", 
+        value: "",
+        data: {}
+      }
       this.enter(textNode, token)
       this.exit(token)
     }
   }
 
-  const exit: Handle = function(this: CompileContext, token: Token) {
+  const exit = function(this: CompileContext, token: Token) {
     if (token.type === "wikilink") {
       this.exit(token)
     } else if (token.type === "wikilinkId" || token.type === "wikilinkText") {

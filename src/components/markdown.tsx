@@ -59,6 +59,7 @@ import { SyntaxHighlighter, TemplateSyntaxHighlighter } from "./syntax-highlight
 import { TagLink } from "./tag-link"
 import { Tooltip } from "./tooltip"
 import { WebsiteFavicon } from "./website-favicon"
+import { ErrorBoundary } from "react-error-boundary"
 
 export type MarkdownProps = {
   children: string
@@ -148,12 +149,12 @@ export const Markdown = React.memo(
               ) : null}
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-4 empty:hidden">
-                  {title ? <MarkdownContent>{title}</MarkdownContent> : null}
+                  {title ? <SafeMarkdownContent>{title}</SafeMarkdownContent> : null}
                   {frontmatter && !hideFrontmatter && !isObjectEmpty(frontmatter) ? (
                     <Frontmatter frontmatter={frontmatter} />
                   ) : null}
                 </div>
-                {body ? <MarkdownContent>{body}</MarkdownContent> : null}
+                {body ? <SafeMarkdownContent>{body}</SafeMarkdownContent> : null}
               </div>
             </>
           )}
@@ -926,4 +927,30 @@ function WeekLink({ week, text, className }: WeekLinkProps) {
  */
 function checkIsFirst(element: HTMLElement) {
   return element.previousSibling === null
+}
+
+function MarkdownError({ error }: { error: Error }) {
+  return (
+    <div className="rounded-md bg-bg-danger/10 p-4">
+      <div className="flex">
+        <div className="flex-shrink-0">
+          <ErrorIcon16 className="text-text-danger" />
+        </div>
+        <div className="ml-3">
+          <h3 className="text-sm font-medium text-text-danger">Error rendering markdown</h3>
+          <div className="mt-2 text-sm text-text-danger/90">
+            <p>{error.message}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SafeMarkdownContent({ children, className }: { children: string; className?: string }) {
+  return (
+    <ErrorBoundary FallbackComponent={MarkdownError}>
+      <MarkdownContent className={className}>{children}</MarkdownContent>
+    </ErrorBoundary>
+  )
 }

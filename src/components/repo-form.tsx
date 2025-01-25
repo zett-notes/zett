@@ -28,18 +28,20 @@ export function RepoForm({ className, onSubmit, onCancel }: RepoFormProps) {
     try {
       setIsLoading(true)
 
-      // Create repo from template
+      // Create empty private repo
       const response = await fetch(
-        `https://api.github.com/repos/screenfluent/notes-template/generate`,
+        `https://api.github.com/user/repos`,
         {
           method: "POST",
           headers: {
-            Authorization: `token ${githubUser.token}`,
+            Authorization: `Bearer ${githubUser.token}`,
+            Accept: "application/vnd.github.v3+json",
           },
           body: JSON.stringify({
-            owner,
             name,
             private: true,
+            auto_init: true, // Initialize with README
+            gitignore_template: "Node",
           }),
         },
       )

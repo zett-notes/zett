@@ -28,6 +28,7 @@ const ALLOW_HEADERS = [
 const EXPOSE_HEADERS = [
   "accept-ranges",
   "age",
+  "authorization",
   "cache-control",
   "content-length",
   "content-language",

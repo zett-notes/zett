@@ -87,7 +87,7 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     depth: 1,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: (url) => getAuthHeaders(user, url),
+    onAuth: () => ({ headers: { Authorization: `Bearer ${user.token}` } }),
   }
 
   // Wipe file system
@@ -121,7 +121,7 @@ export async function gitPull(user: GitHubUser, repo: GitHubRepository) {
     singleBranch: true,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: (url) => getAuthHeaders(user, url),
+    onAuth: () => ({ headers: { Authorization: `Bearer ${user.token}` } }),
   }
 
   const stopTimer = startTimer("git pull")
@@ -138,7 +138,7 @@ export async function gitPush(user: GitHubUser, repo: GitHubRepository) {
     ref: DEFAULT_BRANCH,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: (url) => getAuthHeaders(user, url),
+    onAuth: () => ({ headers: { Authorization: `Bearer ${user.token}` } }),
   }
 
   const stopTimer = startTimer("git push")

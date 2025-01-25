@@ -16,10 +16,16 @@ export const config = {
   path: "/dev-token"
 }
 
+interface GitHubUser {
+  login: string
+  name: string
+  email: string
+}
+
 // Copy of the getUser function from github-auth.tsx to avoid duplication
-async function getUser(token: string) {
+async function getUser(token: string): Promise<GitHubUser> {
   const response = await fetch("https://api.github.com/user", {
     headers: { Authorization: `Bearer ${token}` }
   })
-  return response.json()
+  return response.json() as Promise<GitHubUser>
 }

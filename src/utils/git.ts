@@ -7,6 +7,13 @@ import { startTimer } from "./timer"
 export const REPO_DIR = "/repo"
 const DEFAULT_BRANCH = "main"
 
+type GitAuth = {
+  username?: string
+  password?: string
+  oauth2format?: 'github' | 'gitlab' | 'bitbucket'
+  token?: string
+}
+
 export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
   const options: Parameters<typeof git.clone>[0] = {
     fs,
@@ -20,17 +27,17 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     depth: 1,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: () => {
+    onAuth: (): GitAuth => {
       if (user.tokenType === 'oauth2') {
         return {
-          oauth2format: 'github' as const,
+          oauth2format: 'github',
           token: user.token
-        } as const
+        }
       }
       // PAT
       return {
         token: user.token
-      } as const
+      }
     },
   }
 
@@ -63,17 +70,17 @@ export async function gitPull(user: GitHubUser) {
     singleBranch: true,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: () => {
+    onAuth: (): GitAuth => {
       if (user.tokenType === 'oauth2') {
         return {
-          oauth2format: 'github' as const,
+          oauth2format: 'github',
           token: user.token
-        } as const
+        }
       }
       // PAT
       return {
         token: user.token
-      } as const
+      }
     },
   }
 
@@ -89,17 +96,17 @@ export async function gitPush(user: GitHubUser) {
     dir: REPO_DIR,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: () => {
+    onAuth: (): GitAuth => {
       if (user.tokenType === 'oauth2') {
         return {
-          oauth2format: 'github' as const,
+          oauth2format: 'github',
           token: user.token
-        } as const
+        }
       }
       // PAT
       return {
         token: user.token
-      } as const
+      }
     },
   }
 

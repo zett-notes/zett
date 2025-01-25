@@ -55,21 +55,7 @@ export default async (request: Request) => {
   const requestHeaders = new Headers()
   for (const [key, value] of request.headers.entries()) {
     if (ALLOW_HEADERS.includes(key.toLowerCase())) {
-      // Handle different auth formats
-      if (key.toLowerCase() === 'authorization') {
-        if (value.startsWith('Basic ')) {
-          // Convert Basic auth to Bearer token
-          const base64Credentials = value.split(' ')[1];
-          const credentials = atob(base64Credentials);
-          const [, token] = credentials.split(':');
-          requestHeaders.set(key, `Bearer ${token}`);
-        } else if (value.startsWith('Bearer ')) {
-          // Pass through existing Bearer token
-          requestHeaders.set(key, value);
-        }
-      } else {
-        requestHeaders.set(key, value)
-      }
+      requestHeaders.set(key, value)
     }
   }
 

@@ -17,9 +17,13 @@ export function SignInButton(props: ButtonProps) {
       variant="primary"
       {...props}
       onClick={async (event) => {
-        console.log("DEV:", import.meta.env.DEV)
-        console.log("PROD:", import.meta.env.PROD)
-        console.log("CLIENT_ID:", import.meta.env.VITE_GITHUB_CLIENT_ID)
+        // Debug info
+        alert(JSON.stringify({
+          DEV: import.meta.env.DEV,
+          PROD: import.meta.env.PROD,
+          CLIENT_ID: import.meta.env.VITE_GITHUB_CLIENT_ID,
+          MODE: import.meta.env.MODE
+        }, null, 2))
 
         // Sign in with a personal access token in local development
         if (import.meta.env.DEV) {
@@ -40,7 +44,7 @@ export function SignInButton(props: ButtonProps) {
           scope: "repo,gist,user:email",
         })
 
-        console.log("Redirecting to OAuth:", window.location.href)
+        alert("Redirecting to: " + window.location.href)
 
         props.onClick?.(event)
       }}

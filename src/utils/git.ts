@@ -24,8 +24,6 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     fs,
     http: httpProxy,
     dir: REPO_DIR,
-    // Use official isomorphic-git CORS proxy
-    corsProxy: "https://cors.isomorphic-git.org",
     url: `https://github.com/${repo.owner}/${repo.name}.git`,
     ref: DEFAULT_BRANCH,
     singleBranch: true,
@@ -80,8 +78,6 @@ export async function gitPull(user: GitHubUser, repo: GitHubRepository) {
     fs,
     http: httpProxy,
     dir: REPO_DIR,
-    // Use official isomorphic-git CORS proxy
-    corsProxy: "https://cors.isomorphic-git.org",
     url: `https://github.com/${repo.owner}/${repo.name}.git`,
     ref: DEFAULT_BRANCH,
     singleBranch: true,
@@ -119,8 +115,6 @@ export async function gitPush(user: GitHubUser, repo: GitHubRepository) {
     fs,
     http: httpProxy,
     dir: REPO_DIR,
-    // Use official isomorphic-git CORS proxy
-    corsProxy: "https://cors.isomorphic-git.org",
     url: `https://github.com/${repo.owner}/${repo.name}.git`,
     ref: DEFAULT_BRANCH,
     onMessage: (message) => console.debug("onMessage", message),

@@ -74,14 +74,14 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
   stopTimer()
 }
 
-export async function gitPull(user: GitHubUser) {
+export async function gitPull(user: GitHubUser, repo: GitHubRepository) {
   const options: Parameters<typeof git.pull>[0] = {
     fs,
     http,
     dir: REPO_DIR,
     // Use official isomorphic-git CORS proxy
     corsProxy: "https://cors.isomorphic-git.org",
-    url: `https://github.com/${user.username}/${user.repo}.git`,
+    url: `https://github.com/${repo.owner}/${repo.name}.git`,
     ref: DEFAULT_BRANCH,
     singleBranch: true,
     onMessage: (message) => console.debug("onMessage", message),
@@ -113,14 +113,14 @@ export async function gitPull(user: GitHubUser) {
   stopTimer()
 }
 
-export async function gitPush(user: GitHubUser) {
+export async function gitPush(user: GitHubUser, repo: GitHubRepository) {
   const options: Parameters<typeof git.push>[0] = {
     fs,
     http,
     dir: REPO_DIR,
     // Use official isomorphic-git CORS proxy
     corsProxy: "https://cors.isomorphic-git.org",
-    url: `https://github.com/${user.username}/${user.repo}.git`,
+    url: `https://github.com/${repo.owner}/${repo.name}.git`,
     ref: DEFAULT_BRANCH,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),

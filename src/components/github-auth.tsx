@@ -3,6 +3,13 @@ import urlcat from "urlcat"
 import { globalStateMachineAtom } from "../global-state"
 import { Button, ButtonProps } from "./button"
 
+interface DevTokenResponse {
+  token: string
+  login: string
+  name: string
+  email: string
+}
+
 export function SignInButton(props: ButtonProps) {
   const send = useSetAtom(globalStateMachineAtom)
   return (
@@ -23,7 +30,7 @@ export function SignInButton(props: ButtonProps) {
           try {
             const response = await fetch("/dev-token")
             if (!response.ok) throw new Error("Not in development")
-            const { token, login, name, email } = await response.json()
+            const { token, login, name, email } = await response.json() as DevTokenResponse
             send({ type: "SIGN_IN", githubUser: { token, login, name, email } })
           } catch (error) {
             console.error(error)

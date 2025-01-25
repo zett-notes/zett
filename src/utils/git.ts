@@ -12,6 +12,10 @@ type GitAuth = {
   password?: string
   oauth2format?: 'github' | 'gitlab' | 'bitbucket'
   token?: string
+  headers?: {
+    'Authorization': string
+    'User-Agent': string
+  }
 }
 
 export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
@@ -19,9 +23,7 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     fs,
     http,
     dir: REPO_DIR,
-    // Use official isomorphic-git CORS proxy
-    corsProxy: "https://cors.isomorphic-git.org",
-    url: `https://api.github.com/repos/${repo.owner}/${repo.name}`,
+    url: `https://github.com/${repo.owner}/${repo.name}`,
     ref: DEFAULT_BRANCH,
     singleBranch: true,
     depth: 1,
@@ -30,14 +32,21 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     onAuth: (): GitAuth => {
       if (user.tokenType === 'oauth2') {
         return {
-          // GitHub OAuth2: oauth2 as username, token as password
           username: 'oauth2',
-          password: user.token
+          password: user.token,
+          headers: {
+            'Authorization': `Bearer ${user.token}`,
+            'User-Agent': 'git/lumen',
+          }
         }
       }
       // PAT
       return {
-        token: user.token
+        token: user.token,
+        headers: {
+          'Authorization': `token ${user.token}`,
+          'User-Agent': 'git/lumen',
+        }
       }
     },
   }
@@ -68,22 +77,29 @@ export async function gitPull(user: GitHubUser) {
     fs,
     http,
     dir: REPO_DIR,
-    // Use official isomorphic-git CORS proxy
-    corsProxy: "https://cors.isomorphic-git.org",
+    url: `https://github.com/${user.username}/${user.repo}`,
+    ref: DEFAULT_BRANCH,
     singleBranch: true,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
     onAuth: (): GitAuth => {
       if (user.tokenType === 'oauth2') {
         return {
-          // GitHub OAuth2: oauth2 as username, token as password
           username: 'oauth2',
-          password: user.token
+          password: user.token,
+          headers: {
+            'Authorization': `Bearer ${user.token}`,
+            'User-Agent': 'git/lumen',
+          }
         }
       }
       // PAT
       return {
-        token: user.token
+        token: user.token,
+        headers: {
+          'Authorization': `token ${user.token}`,
+          'User-Agent': 'git/lumen',
+        }
       }
     },
   }
@@ -98,21 +114,28 @@ export async function gitPush(user: GitHubUser) {
     fs,
     http,
     dir: REPO_DIR,
-    // Use official isomorphic-git CORS proxy
-    corsProxy: "https://cors.isomorphic-git.org",
+    url: `https://github.com/${user.username}/${user.repo}`,
+    ref: DEFAULT_BRANCH,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
     onAuth: (): GitAuth => {
       if (user.tokenType === 'oauth2') {
         return {
-          // GitHub OAuth2: oauth2 as username, token as password
           username: 'oauth2',
-          password: user.token
+          password: user.token,
+          headers: {
+            'Authorization': `Bearer ${user.token}`,
+            'User-Agent': 'git/lumen',
+          }
         }
       }
       // PAT
       return {
-        token: user.token
+        token: user.token,
+        headers: {
+          'Authorization': `token ${user.token}`,
+          'User-Agent': 'git/lumen',
+        }
       }
     },
   }

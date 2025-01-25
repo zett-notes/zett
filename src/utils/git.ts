@@ -24,7 +24,9 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     fs,
     http: httpProxy,
     dir: REPO_DIR,
-    url: `https://github.com/${repo.owner}/${repo.name}`,
+    // Use official isomorphic-git CORS proxy
+    corsProxy: "https://cors.isomorphic-git.org",
+    url: `https://github.com/${repo.owner}/${repo.name}.git`,
     ref: DEFAULT_BRANCH,
     singleBranch: true,
     depth: 1,
@@ -78,7 +80,9 @@ export async function gitPull(user: GitHubUser, repo: GitHubRepository) {
     fs,
     http: httpProxy,
     dir: REPO_DIR,
-    url: `https://github.com/${user.username}/${user.repo}`,
+    // Use official isomorphic-git CORS proxy
+    corsProxy: "https://cors.isomorphic-git.org",
+    url: `https://github.com/${user.username}/${user.repo}.git`,
     ref: DEFAULT_BRANCH,
     singleBranch: true,
     onMessage: (message) => console.debug("onMessage", message),
@@ -115,7 +119,9 @@ export async function gitPush(user: GitHubUser, repo: GitHubRepository) {
     fs,
     http: httpProxy,
     dir: REPO_DIR,
-    url: `https://github.com/${user.username}/${user.repo}`,
+    // Use official isomorphic-git CORS proxy
+    corsProxy: "https://cors.isomorphic-git.org",
+    url: `https://github.com/${user.username}/${user.repo}.git`,
     ref: DEFAULT_BRANCH,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),

@@ -9,8 +9,10 @@ import {
   Tokenizer,
   Construct,
 } from "micromark-util-types"
-import { Plugin, Processor } from "unified"
+import { Plugin } from "unified"
 import { Node } from "unist"
+import { VFile } from "vfile" // <-- added import for type
+// Removed: import { Processor } from "unified"  (unused)
 
 const types = {
   wikilink: "wikilink",
@@ -259,7 +261,6 @@ export function wikilinkHtml(): HtmlExtension {
   }
 }
 
-// Register wikilink as an mdast node type
 interface WikilinkNode extends Node {
   type: "wikilink"
   value: string
@@ -363,20 +364,21 @@ export function wikilinkFromMarkdown(): FromMarkdownExtension {
 }
 
 export function remarkWikilink(): Plugin<[], Root> {
-  return function (this: Processor) {
-    const data = this.data() || this.data({})
-    
-    const add = (field: string, value: unknown) => {
-      const list = (data as Record<string, unknown[]>)[field] 
-        ? (data as Record<string, unknown[]>)[field] 
-        : ((data as Record<string, unknown[]>)[field] = [])
-      list.push(value)
+  return function () {
+    return (tree: Root, file: VFile): Root => {
+      const data = file.data || (file.data = {})
+      
+      const add = (field: string, value: unknown) => {
+        const store = data as Record<string, unknown[]>
+        store[field] = store[field] || []
+        store[field].push(value)
+      }
+
+      add("micromarkExtensions", wikilink())
+      add("fromMarkdownExtensions", wikilinkFromMarkdown())
+      add("toMarkdownExtensions", wikilinkHtml())
+
+      return tree
     }
-
-    add("micromarkExtensions", wikilink())
-    add("fromMarkdownExtensions", wikilinkFromMarkdown())
-    add("toMarkdownExtensions", wikilinkHtml())
-
-    return (tree: Root) => tree
   }
 }

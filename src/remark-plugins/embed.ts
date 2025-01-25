@@ -12,8 +12,9 @@ import {
   Previous,
   Construct,
 } from "micromark-util-types"
-import { Plugin, Processor } from "unified"
+import { Plugin } from "unified"
 import { Node } from "unist"
+import { VFile } from "vfile"
 
 interface EmbedNode extends Node {
   type: "embed"
@@ -369,17 +370,21 @@ export function embedFromMarkdown(): FromMarkdownExtension {
  * Reference: https://github.com/remarkjs/remark-gfm/blob/main/index.js
  */
 export function remarkEmbed(): Plugin<[Options?], Root> {
-  return function(this: Processor) {
-    const add = (field: string, value: unknown) => {
-      const data = this.data() as Record<string, unknown[]>
-      const list = data[field] ? data[field] : (data[field] = [])
-      list.push(value)
+  return function (options?: Options) {
+    return (tree: Root, file: VFile): Root => {
+      const data = file.data || (file.data = {})
+
+      const add = (field: string, value: unknown) => {
+        const store = data as Record<string, unknown[]>
+        store[field] = store[field] || []
+        store[field].push(value)
+      }
+
+      add("micromarkExtensions", embed())
+      add("fromMarkdownExtensions", embedFromMarkdown())
+      add("toMarkdownExtensions", embedHtml())
+
+      return tree
     }
-
-    add("micromarkExtensions", embed())
-    add("fromMarkdownExtensions", embedFromMarkdown())
-    add("toMarkdownExtensions", embedHtml())
-
-    return (tree: Root) => tree
   }
 }

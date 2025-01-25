@@ -1,61 +1,121 @@
-import { Root } from "mdast"
-import { Extension as FromMarkdownExtension } from "mdast-util-from-markdown"
+import { Root, Text, PhrasingContent } from "mdast"
+import { Extension as FromMarkdownExtension, Handle, Token, CompileContext } from "mdast-util-from-markdown"
 import { codes } from "micromark-util-symbol/codes"
 import {
   Code,
-  Construct,
   Extension,
   HtmlExtension,
-  Previous,
   State,
   Tokenizer,
+  Previous,
+  Construct,
 } from "micromark-util-types"
-import { Plugin } from "unified"
+import { Plugin, Processor } from "unified"
 import { Node } from "unist"
+
+interface TagNode extends Node {
+  type: "tag"
+  value: string
+  children: []
+  data: {
+    hName: string
+    hProperties: {
+      className: string[]
+    }
+  }
+}
+
+declare module "mdast" {
+  interface PhrasingContentMap {
+    tag: TagNode
+  }
+}
+
+declare module "unified" {
+  interface Nodes {
+    tag: TagNode
+  }
+}
+
+declare module "micromark-util-types" {
+  interface TokenTypeMap {
+    tag: "tag"
+    tagMarker: "tagMarker"
+    tagName: "tagName"
+    escape: "escape"
+  }
+  
+  interface Nodes {
+    tag: TagNode
+  }
+}
 
 const types = {
   tag: "tag",
   tagMarker: "tagMarker",
   tagName: "tagName",
-}
+} as const
 
 /** Syntax extension (text -> tokens) */
 export function tag(): Extension {
   const tokenize: Tokenizer = (effects, ok, nok) => {
-    return enter
-
-    function enter(code: Code): State | void {
+    const enter: State = function(code: Code): State | undefined {
+      if (code === codes.backslash) {
+        effects.enter('escape')
+        effects.consume(code)
+        return escapeStart
+      }
+      
       if (isMarkerChar(code)) {
         effects.enter(types.tag)
         effects.enter(types.tagMarker)
         effects.consume(code)
         effects.exit(types.tagMarker)
-        return enterName
-      } else {
-        return nok(code)
-      }
-    }
-
-    function enterName(code: Code): State | void {
-      if (isAlphaChar(code)) {
         effects.enter(types.tagName)
-        effects.consume(code)
+        effects.enter('chunkString', {contentType: 'string'})
         return continueName
-      } else {
-        return nok(code)
       }
+      return nok(code)
     }
 
-    function continueName(code: Code): State | void {
+    const escapeStart: State = function(code: Code): State | undefined {
+      if (code === codes.numberSign) {
+        effects.consume(code)
+        effects.exit('escape')
+        return enter
+      }
+      return nok(code)
+    }
+
+    const continueName: State = function(code: Code): State | undefined {
+      if (code === codes.backslash) {
+        effects.consume(code)
+        return escapeInName
+      }
+      
       if (isNameChar(code)) {
         effects.consume(code)
         return continueName
-      } else {
+      }
+      
+      if (code === codes.space || code === codes.eof || code === codes.carriageReturn || code === codes.lineFeed) {
+        effects.exit('chunkString')
         effects.exit(types.tagName)
         effects.exit(types.tag)
         return ok(code)
       }
+      return nok(code)
     }
+
+    const escapeInName: State = function(code: Code): State | undefined {
+      if (code === codes.backslash || isNameChar(code)) {
+        effects.consume(code)
+        return continueName
+      }
+      return continueName(code)
+    }
+
+    return enter
   }
 
   const previous: Previous = (code) => {
@@ -77,128 +137,106 @@ export function tag(): Extension {
   return {
     text: {
       [codes.numberSign]: construct,
+      [codes.backslash]: construct,
     },
   }
 }
 
-/** Returns true if character is valid tag marker */
-function isMarkerChar(code: Code): boolean {
-  return code === codes.numberSign
-}
-
-/** Returns true if character is in the English alphabet */
-function isAlphaChar(code: Code): boolean {
-  if (code === null) return false
-  return (
-    (code >= codes.lowercaseA && code <= codes.lowercaseZ) || // a-z
-    (code >= codes.uppercaseA && code <= codes.uppercaseZ) || // A-Z
-    (code >= 0x00c0 && code <= 0x00d6) || // Latin-1 Supplement (À-Ö)
-    (code >= 0x00d8 && code <= 0x00f6) || // Latin-1 Supplement (Ø-ö)
-    (code >= 0x00f8 && code <= 0x00ff) || // Latin-1 Supplement (ø-ÿ)
-    (code >= 0x0100 && code <= 0x017f) || // Latin Extended-A
-    (code >= 0x0180 && code <= 0x024f) || // Latin Extended-B
-    (code >= 0x0370 && code <= 0x03ff) || // Greek and Coptic
-    (code >= 0x0400 && code <= 0x04ff) || // Cyrillic
-    (code >= 0x0530 && code <= 0x058f) || // Armenian
-    (code >= 0x0590 && code <= 0x05ff) || // Hebrew
-    (code >= 0x0600 && code <= 0x06ff) || // Arabic
-    (code >= 0x0900 && code <= 0x097f) || // Devanagari
-    (code >= 0x4e00 && code <= 0x9fff) || // CJK Unified Ideographs
-    (code >= 0xac00 && code <= 0xd7af) // Hangul Syllables
-  )
-}
-
-/** Returns true if character is a number  */
-function isNumberChar(code: Code): boolean {
-  if (code === null) return false
-  return code >= codes.digit0 && code <= codes.digit9
-}
-
-/** Returns true if character is valid in tag names */
-function isNameChar(code: Code): boolean {
-  if (code === null) return false
-  return (
-    isAlphaChar(code) ||
-    isNumberChar(code) ||
-    code === codes.underscore ||
-    code === codes.dash ||
-    code === codes.slash
-  )
-}
-
-/**
- * HTML extension (tokens -> HTML)
- * This is only used for unit testing
- */
+/** HTML extension (tokens -> HTML) */
 export function tagHtml(): HtmlExtension {
   return {
     enter: {
-      [types.tagName](token) {
+      tagName(token) {
         const name = this.sliceSerialize(token)
-        this.tag(`<tag name="${name}" />`)
-      },
-    },
-  }
-}
-
-// Register tag as an mdast node type
-interface Tag extends Node {
-  type: "tag"
-  value: string
-  data: { name: string }
-}
-
-declare module "mdast" {
-  interface StaticPhrasingContentMap {
-    tag: Tag
+        this.raw(`<tag>${name}</tag>`)
+      }
+    }
   }
 }
 
 /** MDAST extension (tokens -> MDAST) */
 export function tagFromMarkdown(): FromMarkdownExtension {
-  // Initialize state
-  let name: string | undefined
+  const enter: Handle = function(this: CompileContext, token: Token) {
+    if (token.type === "tag") {
+      const node: TagNode = {
+        type: "tag",
+        value: "",
+        children: [],
+        data: {
+          hName: "tag",
+          hProperties: {
+            className: ["tag"]
+          }
+        }
+      }
+      // @ts-ignore - we know this is safe because we've declared the type in mdast
+      this.enter(node, token)
+    } else if (token.type === "tagName") {
+      const textNode: Text = { type: "text", value: "" }
+      this.enter(textNode, token)
+      this.exit(token)
+    }
+  }
+
+  const exit: Handle = function(this: CompileContext, token: Token) {
+    if (token.type === "tag") {
+      this.exit(token)
+    } else if (token.type === "tagName") {
+      const node = this.stack[this.stack.length - 1] as PhrasingContent
+      if ('type' in node && node.type === "tag") {
+        const name = this.sliceSerialize(token)
+        ;(node as TagNode).value = name
+      }
+    }
+  }
 
   return {
     enter: {
-      [types.tag](token) {
-        this.enter({ type: "tag", value: "", data: { name: "" } }, token)
-      },
-      [types.tagName](token) {
-        name = this.sliceSerialize(token)
-      },
+      tag: enter,
+      tagName: enter
     },
     exit: {
-      [types.tag](token) {
-        const node = this.stack[this.stack.length - 1]
-
-        if (node.type === "tag") {
-          node.data.name = name || ""
-          node.value = `#${name}`
-        }
-
-        this.exit(token)
-
-        // Reset state
-        name = undefined
-      },
-    },
+      tag: exit,
+      tagName: exit
+    }
   }
 }
 
-/**
- * Remark plugin
- * Reference: https://github.com/remarkjs/remark-gfm/blob/main/index.js
- */
-export function remarkTag(): ReturnType<Plugin<[], Root>> {
-  // @ts-ignore I'm not sure how to type `this`
-  const data = this.data()
+function isMarkerChar(code: Code): boolean {
+  return code !== null && code === codes.numberSign
+}
 
-  add("micromarkExtensions", tag())
-  add("fromMarkdownExtensions", tagFromMarkdown())
+function isAlphaChar(code: Code): boolean {
+  return code !== null && (
+    (code >= codes.lowercaseA && code <= codes.lowercaseZ) ||
+    (code >= codes.uppercaseA && code <= codes.uppercaseZ)
+  )
+}
 
-  function add(field: string, value: unknown) {
-    const list = data[field] ? data[field] : (data[field] = [])
-    list.push(value)
+function isNameChar(code: Code): boolean {
+  return code !== null && (
+    isAlphaChar(code) ||
+    (code >= codes.digit0 && code <= codes.digit9) ||
+    code === codes.dash ||
+    code === codes.underscore
+  )
+}
+
+export function remarkTag(): Plugin<[Options?], Root> {
+  return function(this: Processor) {
+    const data = this.data() as Record<string, unknown[]>
+
+    add("micromarkExtensions", tag())
+    add("fromMarkdownExtensions", tagFromMarkdown())
+    add("toMarkdownExtensions", tagHtml())
+
+    function add(field: string, value: unknown) {
+      const list = data[field] ? data[field] : (data[field] = [])
+      list.push(value)
+    }
+
+    return (tree: Root) => tree
   }
 }
+
+interface Options {}

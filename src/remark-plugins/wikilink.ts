@@ -1,7 +1,14 @@
-import { Root } from "mdast"
-import { Extension as FromMarkdownExtension } from "mdast-util-from-markdown"
+import { Root, Text, PhrasingContent } from "mdast"
+import { Extension as FromMarkdownExtension, Handle, Token, CompileContext } from "mdast-util-from-markdown"
 import { codes } from "micromark-util-symbol/codes"
-import { Code, Construct, Extension, HtmlExtension, State, Tokenizer } from "micromark-util-types"
+import {
+  Code,
+  Extension,
+  HtmlExtension,
+  State,
+  Tokenizer,
+  Construct,
+} from "micromark-util-types"
 import { Plugin } from "unified"
 import { Node } from "unist"
 
@@ -11,46 +18,77 @@ const types = {
   wikilinkId: "wikilinkId",
   wikilinkSeparator: "wikilinkSeparator",
   wikilinkText: "wikilinkText",
+  escape: "escape",
+} as const
+
+declare module "micromark-util-types" {
+  interface TokenTypeMap {
+    wikilink: "wikilink"
+    wikilinkMarker: "wikilinkMarker"
+    wikilinkId: "wikilinkId"
+    wikilinkSeparator: "wikilinkSeparator"
+    wikilinkText: "wikilinkText"
+    escape: "escape"
+  }
 }
 
 /** Syntax extension (text -> tokens) */
 export function wikilink(): Extension {
   const tokenize: Tokenizer = (effects, ok, nok) => {
-    return enter
-
-    function enter(code: Code): State | void {
+    const enter: State = function(code: Code): State | undefined {
+      if (code === codes.backslash) {
+        effects.enter('escape')
+        effects.consume(code)
+        return escapeStart
+      }
+      
       if (isOpeningMarkerChar(code)) {
         effects.enter(types.wikilink)
         effects.enter(types.wikilinkMarker)
         effects.consume(code)
         return exitOpeningMarker
-      } else {
-        return nok(code)
       }
+      return nok(code)
     }
 
-    function exitOpeningMarker(code: Code): State | void {
+    const escapeStart: State = function(code: Code): State | undefined {
+      if (code === codes.leftSquareBracket || code === codes.rightSquareBracket || code === codes.verticalBar) {
+        effects.consume(code)
+        effects.exit('escape')
+        return enter
+      }
+      return nok(code)
+    }
+
+    const exitOpeningMarker: State = function(code: Code): State | undefined {
       if (isOpeningMarkerChar(code)) {
         effects.consume(code)
         effects.exit(types.wikilinkMarker)
-
         return enterId
-      } else {
-        return nok(code)
       }
+      return nok(code)
     }
 
-    function enterId(code: Code): State | void {
+    const enterId: State = function(code: Code): State | undefined {
+      if (code === codes.backslash) {
+        effects.consume(code)
+        return escapeInId
+      }
+      
       if (isFilenameChar(code)) {
         effects.enter(types.wikilinkId)
         effects.consume(code)
         return continueId
-      } else {
-        return nok(code)
       }
+      return nok(code)
     }
 
-    function continueId(code: Code): State | void {
+    const continueId: State = function(code: Code): State | undefined {
+      if (code === codes.backslash) {
+        effects.consume(code)
+        return escapeInId
+      }
+      
       if (isSeparatorChar(code)) {
         effects.exit(types.wikilinkId)
         effects.enter(types.wikilinkSeparator)
@@ -65,22 +103,38 @@ export function wikilink(): Extension {
       } else if (isFilenameChar(code)) {
         effects.consume(code)
         return continueId
-      } else {
-        return nok(code)
       }
+      return nok(code)
     }
 
-    function enterText(code: Code): State | void {
+    const escapeInId: State = function(code: Code): State | undefined {
+      if (code === codes.backslash || isFilenameChar(code)) {
+        effects.consume(code)
+        return continueId
+      }
+      return continueId(code)
+    }
+
+    const enterText: State = function(code: Code): State | undefined {
+      if (code === codes.backslash) {
+        effects.consume(code)
+        return escapeInText
+      }
+      
       if (isTextChar(code)) {
         effects.enter(types.wikilinkText)
         effects.consume(code)
         return continueText
-      } else {
-        return nok(code)
       }
+      return nok(code)
     }
 
-    function continueText(code: Code): State | void {
+    const continueText: State = function(code: Code): State | undefined {
+      if (code === codes.backslash) {
+        effects.consume(code)
+        return escapeInText
+      }
+      
       if (isTextChar(code)) {
         effects.consume(code)
         return continueText
@@ -89,30 +143,49 @@ export function wikilink(): Extension {
         effects.enter(types.wikilinkMarker)
         effects.consume(code)
         return exitClosingMarker
-      } else {
-        return nok(code)
       }
+      return nok(code)
     }
 
-    function exitClosingMarker(code: Code): State | void {
+    const escapeInText: State = function(code: Code): State | undefined {
+      if (code === codes.backslash || isTextChar(code)) {
+        effects.consume(code)
+        return continueText
+      }
+      return continueText(code)
+    }
+
+    const exitClosingMarker: State = function(code: Code): State | undefined {
       if (isClosingMarkerChar(code)) {
         effects.consume(code)
         effects.exit(types.wikilinkMarker)
         effects.exit(types.wikilink)
-        return ok
-      } else {
-        return nok(code)
+        return ok(code)
       }
+      return nok(code)
     }
+
+    return enter
   }
+
   const construct: Construct = {
     name: "wikilink",
     tokenize,
+    previous: (code) => {
+      return (
+        code === codes.space ||
+        code === codes.carriageReturn ||
+        code === codes.lineFeed ||
+        code === codes.carriageReturnLineFeed ||
+        code === codes.eof
+      )
+    },
   }
 
   return {
     text: {
       [codes.leftSquareBracket]: construct,
+      [codes.backslash]: construct,
     },
   }
 }
@@ -176,79 +249,112 @@ function isTextChar(code: Code): boolean {
  * This is only used for unit testing
  */
 export function wikilinkHtml(): HtmlExtension {
-  // Initialize state
-  let id: string | undefined
-  let text: string | undefined
-
   return {
     enter: {
-      [types.wikilinkId](token) {
-        id = this.sliceSerialize(token)
-      },
-      [types.wikilinkText](token) {
-        text = this.sliceSerialize(token)
-      },
-    },
-    exit: {
-      [types.wikilink]() {
-        this.tag(`<wikilink id="${id}" text="${text || ""}" />`)
-
-        // Reset state
-        id = undefined
-        text = undefined
-      },
-    },
+      wikilinkId(token) {
+        const id = this.sliceSerialize(token)
+        this.raw(`<wikilink id="${id}" text="${id}" />`)
+      }
+    }
   }
 }
 
 // Register wikilink as an mdast node type
-interface Wikilink extends Node {
+interface WikilinkNode extends Node {
   type: "wikilink"
   value: string
-  data: { id: string; text: string }
+  children: []
+  data: {
+    hName: string
+    hProperties: {
+      id: string
+      text: string
+    }
+  }
 }
 
 declare module "mdast" {
-  interface StaticPhrasingContentMap {
-    wikilink: Wikilink
+  interface PhrasingContentMap {
+    wikilink: WikilinkNode
+  }
+}
+
+declare module "unified" {
+  interface Nodes {
+    wikilink: WikilinkNode
+  }
+}
+
+declare module "micromark-util-types" {
+  interface TokenTypeMap {
+    wikilink: "wikilink"
+    wikilinkMarker: "wikilinkMarker"
+    wikilinkId: "wikilinkId"
+    wikilinkSeparator: "wikilinkSeparator"
+    wikilinkText: "wikilinkText"
+    escape: "escape"
+  }
+  
+  interface Nodes {
+    wikilink: WikilinkNode
   }
 }
 
 /** MDAST extension (tokens -> MDAST) */
 export function wikilinkFromMarkdown(): FromMarkdownExtension {
-  // Initialize state
-  let id: string | undefined
-  let text: string | undefined
+  const enter: Handle = function(this: CompileContext, token: Token) {
+    if (token.type === "wikilink") {
+      const node: WikilinkNode = {
+        type: "wikilink",
+        value: "",
+        children: [],
+        data: {
+          hName: "wikilink",
+          hProperties: {
+            id: "",
+            text: ""
+          }
+        }
+      }
+      // @ts-ignore - we know this is safe because we've declared the type in mdast
+      this.enter(node, token)
+    } else if (token.type === "wikilinkId" || token.type === "wikilinkText") {
+      const textNode: Text = { type: "text", value: "" }
+      this.enter(textNode, token)
+      this.exit(token)
+    }
+  }
+
+  const exit: Handle = function(this: CompileContext, token: Token) {
+    if (token.type === "wikilink") {
+      this.exit(token)
+    } else if (token.type === "wikilinkId" || token.type === "wikilinkText") {
+      const node = this.stack[this.stack.length - 1] as PhrasingContent
+      if ('type' in node && node.type === "wikilink") {
+        const value = this.sliceSerialize(token)
+        const wikilinkNode = node as WikilinkNode
+        
+        if (token.type === "wikilinkId") {
+          wikilinkNode.data.hProperties.id = value
+          wikilinkNode.value = value // Store ID in value for easy access
+        } else {
+          wikilinkNode.data.hProperties.text = value
+        }
+      }
+    }
+  }
 
   return {
     enter: {
-      [types.wikilink](token) {
-        this.enter({ type: "wikilink", value: "", data: { id: "", text: "" } }, token)
-      },
-      [types.wikilinkId](token) {
-        id = this.sliceSerialize(token)
-      },
-      [types.wikilinkText](token) {
-        text = this.sliceSerialize(token)
-      },
+      wikilink: enter,
+      wikilinkId: enter,
+      wikilinkText: enter
     },
     exit: {
-      [types.wikilink](token) {
-        const node = this.stack[this.stack.length - 1]
-
-        if (node.type === "wikilink") {
-          node.data.id = id || ""
-          node.data.text = text || ""
-          node.value = text || id || ""
-        }
-
-        this.exit(token)
-
-        // Reset state
-        id = undefined
-        text = undefined
-      },
-    },
+      wikilink: exit,
+      wikilinkId: exit,
+      wikilinkText: exit
+    }
   }
 }
 

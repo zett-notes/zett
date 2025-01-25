@@ -1,6 +1,5 @@
 {
-  "name": "zett",
-  "version": "0.0.1",
+  "name": "numen",
   "private": true,
   "description": "Note-taking app with Zettelkasten principles",
   "repository": {

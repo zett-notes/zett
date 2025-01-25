@@ -9,7 +9,7 @@ import {
   Tokenizer,
   Construct,
 } from "micromark-util-types"
-import { Plugin } from "unified"
+import { Plugin, Processor } from "unified"
 import { Node } from "unist"
 
 const types = {
@@ -358,19 +358,21 @@ export function wikilinkFromMarkdown(): FromMarkdownExtension {
   }
 }
 
-/**
- * Remark plugin
- * Reference: https://github.com/remarkjs/remark-gfm/blob/main/index.js
- */
-export function remarkWikilink(): ReturnType<Plugin<[], Root>> {
-  // @ts-ignore I'm not sure how to type `this`
-  const data = this.data()
+interface Options {}
 
-  add("micromarkExtensions", wikilink())
-  add("fromMarkdownExtensions", wikilinkFromMarkdown())
+export function remarkWikilink(): Plugin<[Options?], Root> {
+  return function(this: Processor) {
+    const data = this.data() as Record<string, unknown[]>
 
-  function add(field: string, value: unknown) {
-    const list = data[field] ? data[field] : (data[field] = [])
-    list.push(value)
+    const add = (field: string, value: unknown) => {
+      const list = data[field] ? data[field] : (data[field] = [])
+      list.push(value)
+    }
+
+    add("micromarkExtensions", wikilink())
+    add("fromMarkdownExtensions", wikilinkFromMarkdown())
+    add("toMarkdownExtensions", wikilinkHtml())
+
+    return (tree: Root) => tree
   }
 }

@@ -12,7 +12,7 @@ import {
   Previous,
   Construct,
 } from "micromark-util-types"
-import { Plugin } from "unified"
+import { Plugin, Processor } from "unified"
 import { Node } from "unist"
 
 interface EmbedNode extends Node {
@@ -62,6 +62,8 @@ const types = {
   embedSeparator: "embedSeparator",
   embedText: "embedText",
 } as const
+
+interface Options {}
 
 /** Syntax extension (text -> tokens) */
 export function embed(): Extension {
@@ -366,15 +368,19 @@ export function embedFromMarkdown(): FromMarkdownExtension {
  * Remark plugin
  * Reference: https://github.com/remarkjs/remark-gfm/blob/main/index.js
  */
-export function remarkEmbed(): ReturnType<Plugin<[], Root>> {
-  // @ts-ignore I'm not sure how to type `this`
-  const data = this.data()
+export function remarkEmbed(): Plugin<[Options?], Root> {
+  return function(this: Processor) {
+    const data = this.data() as Record<string, unknown[]>
 
-  add("micromarkExtensions", embed())
-  add("fromMarkdownExtensions", embedFromMarkdown())
+    const add = (field: string, value: unknown) => {
+      const list = data[field] ? data[field] : (data[field] = [])
+      list.push(value)
+    }
 
-  function add(field: string, value: unknown) {
-    const list = data[field] ? data[field] : (data[field] = [])
-    list.push(value)
+    add("micromarkExtensions", embed())
+    add("fromMarkdownExtensions", embedFromMarkdown())
+    add("toMarkdownExtensions", embedHtml())
+
+    return (tree: Root) => tree
   }
 }

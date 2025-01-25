@@ -51,17 +51,17 @@ export function RepoForm({ className, onSubmit, onCancel }: RepoFormProps) {
           throw new Error("Repository already exists.")
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { message } = (await response.json()) as any
-
-        throw new Error(message || "Failed to create repository. Please try again.")
+        const data = await response.json()
+        throw new Error(data.message || "Failed to create repository. Please try again.")
       }
 
+      const repo = await response.json()
+      
       // 1 second delay to allow GitHub API to catch up
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      send({ type: "SELECT_REPO", githubRepo: { owner, name } })
-      onSubmit?.({ owner, name })
+      send({ type: "SELECT_REPO", githubRepo: { owner: repo.owner.login, name: repo.name } })
+      onSubmit?.({ owner: repo.owner.login, name: repo.name })
       setError(null)
     } catch (error) {
       setError(error as Error)

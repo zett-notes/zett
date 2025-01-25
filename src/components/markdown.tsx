@@ -5,7 +5,8 @@ import { isToday } from "date-fns"
 import { useAtomValue } from "jotai"
 import { selectAtom } from "jotai/utils"
 import React, { useMemo } from "react"
-import ReactMarkdown, { Options, Components } from "react-markdown"
+import ReactMarkdown from "react-markdown"
+import type { Components } from "react-markdown"
 import type { ComponentPropsWithoutRef } from "react"
 import type { Position } from "unist"
 import type { Plugin } from "unified"
@@ -166,6 +167,7 @@ export const Markdown = React.memo(
 
 type CodeProps = ComponentPropsWithoutRef<"code"> & {
   inline?: boolean
+  className?: string
   children?: React.ReactNode
 }
 
@@ -173,6 +175,7 @@ type LiProps = ComponentPropsWithoutRef<"li"> & {
   ordered?: boolean
   index?: number
   checked?: boolean
+  className?: string
   children?: React.ReactNode
   position?: Position
 }
@@ -186,37 +189,25 @@ function MarkdownContent({ children, className }: { children: string; className?
     <ReactMarkdown
       className={cx("markdown", className)}
       remarkPlugins={[
-        remarkGfm,
-        remarkBreaks,  // Handle line breaks properly
-        remarkWikilink,
-        remarkEmbed,
-        remarkTag,
-        [remarkMath, { 
-          singleDollarTextMath: false,
-          strict: false 
-        }],
-      ] as Options["remarkPlugins"]}
-      rehypePlugins={[
-        [rehypeKatex, {
-          throwOnError: false,
-          strict: false,
-          trust: true,
-          macros: {
-            "\\eqref": "\\href{#1}{}",  // Handle equation references
-          }
-        }]
-      ] as Options["rehypePlugins"]}
+        remarkGfm as unknown as Plugin<[], Root>,
+        remarkBreaks as unknown as Plugin<[], Root>,  // Handle line breaks properly
+        remarkWikilink as unknown as Plugin<[], Root>,
+        remarkEmbed as unknown as Plugin<[], Root>,
+        remarkTag as unknown as Plugin<[], Root>,
+        [remarkMath as unknown as Plugin<[], Root>, { singleDollarTextMath: false }],
+      ]}
+      rehypePlugins={[rehypeKatex as unknown as Plugin<[], Root>]}
       components={{
         a: Anchor,
         img: Image,
         input: CheckboxInput,
         li: ListItem,
-        pre: ({ children }) => <div className="relative group">{children}</div>,
+        pre: ({ children }) => <>{children}</>,
         code: Code,
         wikilink: NoteLink,
         embed: NoteEmbed,
         tag: TagLink,
-      } as Partial<Components>}
+      } as Partial<CustomComponents>}
     >
       {children}
     </ReactMarkdown>

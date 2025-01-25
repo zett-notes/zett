@@ -55,7 +55,15 @@ export default async (request: Request) => {
   const requestHeaders = new Headers()
   for (const [key, value] of request.headers.entries()) {
     if (ALLOW_HEADERS.includes(key.toLowerCase())) {
-      requestHeaders.set(key, value)
+      // Convert Basic auth to Bearer token for GitHub
+      if (key.toLowerCase() === 'authorization' && value.startsWith('Basic ')) {
+        const base64Credentials = value.split(' ')[1];
+        const credentials = atob(base64Credentials);
+        const [, token] = credentials.split(':');
+        requestHeaders.set(key, `Bearer ${token}`);
+      } else {
+        requestHeaders.set(key, value)
+      }
     }
   }
 

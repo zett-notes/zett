@@ -1,5 +1,4 @@
 import { useSetAtom } from "jotai"
-import urlcat from "urlcat"
 import { globalStateMachineAtom } from "../global-state"
 import { Button, ButtonProps } from "./button"
 

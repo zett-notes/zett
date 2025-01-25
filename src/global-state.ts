@@ -291,14 +291,11 @@ function createGlobalStateMachine() {
             // Save user metadata to localStorage
             localStorage.setItem(GITHUB_USER_KEY, JSON.stringify({ 
               token, 
-              tokenType: 'oauth2' as const,
+              tokenType: 'oauth2',
               login, 
               name, 
               email 
             }))
-
-            // Add 1 second delay to ensure localStorage is updated
-            await new Promise((resolve) => setTimeout(resolve, 1000))
 
             const searchParams = new URLSearchParams(window.location.search)
 
@@ -314,13 +311,7 @@ function createGlobalStateMachine() {
               }`,
             )
 
-            return { githubUser: { 
-              token, 
-              tokenType: 'oauth2' as const, 
-              login, 
-              name, 
-              email 
-            } }
+            return { githubUser: { token, tokenType: 'oauth2', login, name, email } }
           }
 
           // Next, check localStorage for user metadata

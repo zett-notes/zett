@@ -1,5 +1,5 @@
 import { Root, Text, PhrasingContent } from "mdast"
-import { Extension as FromMarkdownExtension, Handle, Token, CompileContext } from "mdast-util-from-markdown"
+import { Extension as FromMarkdownExtension, Token, CompileContext } from "mdast-util-from-markdown"
 import { codes } from "micromark-util-symbol/codes"
 import {
   Code,
@@ -363,13 +363,14 @@ export function wikilinkFromMarkdown(): FromMarkdownExtension {
   }
 }
 
-interface Options {}
-
-export function remarkWikilink(): Plugin<[Options?], Root> {
-  return function(this: Processor) {
+export function remarkWikilink(): Plugin<[], Root> {
+  return function (this: Processor) {
+    const data = this.data() || this.data({})
+    
     const add = (field: string, value: unknown) => {
-      const data = this.data() as Record<string, unknown[]>
-      const list = data[field] ? data[field] : (data[field] = [])
+      const list = (data as Record<string, unknown[]>)[field] 
+        ? (data as Record<string, unknown[]>)[field] 
+        : ((data as Record<string, unknown[]>)[field] = [])
       list.push(value)
     }
 

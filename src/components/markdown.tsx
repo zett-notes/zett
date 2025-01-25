@@ -6,7 +6,11 @@ import { useAtomValue } from "jotai"
 import { selectAtom } from "jotai/utils"
 import React, { useMemo } from "react"
 import ReactMarkdown from "react-markdown"
-import { CodeProps, LiProps, Position } from "react-markdown/lib/ast-to-react"
+import type { Components } from "react-markdown"
+import type { ComponentPropsWithoutRef } from "react"
+import type { Position } from "unist"
+import type { Plugin } from "unified"
+import type { Root } from "mdast"
 import { useNetworkState } from "react-use"
 import rehypeKatex from "rehype-katex"
 import remarkGfm from "remark-gfm"
@@ -159,6 +163,21 @@ export const Markdown = React.memo(
   },
 )
 
+type CodeProps = ComponentPropsWithoutRef<"code"> & {
+  inline?: boolean
+  className?: string
+  children?: React.ReactNode
+}
+
+type LiProps = ComponentPropsWithoutRef<"li"> & {
+  ordered?: boolean
+  index?: number
+  checked?: boolean
+  className?: string
+  children?: React.ReactNode
+  position?: Position
+}
+
 function isObjectEmpty(obj: Record<string, unknown>) {
   return Object.keys(obj).length === 0
 }
@@ -168,60 +187,39 @@ function MarkdownContent({ children, className }: { children: string; className?
     <ReactMarkdown
       className={cx("markdown", className)}
       remarkPlugins={[
-        remarkGfm,
-        remarkBreaks,  // Handle line breaks properly
-        remarkWikilink,
-        remarkEmbed,
-        remarkTag,
-        [remarkMath, { singleDollarTextMath: false }],
+        remarkGfm as unknown as Plugin<[], Root>,
+        remarkBreaks as unknown as Plugin<[], Root>,  // Handle line breaks properly
+        remarkWikilink as unknown as Plugin<[], Root>,
+        remarkEmbed as unknown as Plugin<[], Root>,
+        remarkTag as unknown as Plugin<[], Root>,
+        [remarkMath as unknown as Plugin<[], Root>, { singleDollarTextMath: false }],
       ]}
-      rehypePlugins={[rehypeKatex]}
-      remarkRehypeOptions={{
-        handlers: {
-          // TODO: Improve type-safety of `node`
-          rehypeKatex(h, node) {
-            return h(node, "math", {
-              output: "mathml",
-            })
-          },
-          wikilink(h, node) {
-            return h(node, "wikilink", {
-              id: node.data.id,
-              text: node.data.text,
-            })
-          },
-          embed(h, node) {
-            return h(node, "embed", {
-              id: node.data.id,
-              text: node.data.text,
-            })
-          },
-          tag(h, node) {
-            return h(node, "tag", {
-              name: node.data.name,
-            })
-          },
-        },
-      }}
+      rehypePlugins={[rehypeKatex as unknown as Plugin<[], Root>]}
       components={{
         a: Anchor,
         img: Image,
         input: CheckboxInput,
         li: ListItem,
-        // Delegate rendering of the <pre> element to the Code component
         pre: ({ children }) => <>{children}</>,
         code: Code,
-        // @ts-ignore I don't know how to extend the list of accepted component keys
         wikilink: NoteLink,
-        // @ts-ignore
         embed: NoteEmbed,
-        // @ts-ignore
         tag: TagLink,
-      }}
+      } as Partial<CustomComponents>}
     >
       {children}
     </ReactMarkdown>
   )
+}
+
+type CustomComponents = Components & {
+  wikilink: React.ComponentType<NoteEmbedProps>
+  embed: React.ComponentType<NoteEmbedProps>
+  tag: React.ComponentType<TagProps>
+}
+
+type TagProps = {
+  name: string
 }
 
 function BookCover({ isbn }: { isbn: string }) {
@@ -631,29 +629,24 @@ function Image(props: React.ComponentPropsWithoutRef<"img">) {
 }
 
 function Code({ className, inline, children }: CodeProps) {
-  if (className?.includes("language-math")) {
-    return <div>{children}</div>
-  }
+  const match = /language-(\w+)/.exec(className || "")
 
   if (inline) {
     return <code className={className}>{children}</code>
   }
 
-  const language = className?.replace("language-", "")
-
-  if (language === "query") {
-    // Display the results of a query instead of the query itself
-    return <QueryResults query={String(children)} />
-  }
-
   return (
-    <div className="relative">
-      <pre className="!pe-12">
-        <div className="absolute end-2 top-2 rounded bg-bg-code-block coarse:end-1 coarse:top-1">
-          <CopyButton text={children.toString()} />
-        </div>
-        <SyntaxHighlighter language={language}>{children}</SyntaxHighlighter>
+    <div className="relative group">
+      <pre className={cx("overflow-x-auto", className)}>
+        <code className={className}>
+          {children}
+        </code>
       </pre>
+      {children && (
+        <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <CopyButton text={children?.toString() || ""} />
+        </div>
+      )}
     </div>
   )
 }
@@ -662,19 +655,22 @@ const TaskListItemContext = React.createContext<{
   position?: Position
 } | null>(null)
 
-function ListItem({ node, ordered, index, ...props }: LiProps) {
-  const isTaskListItem = props.className?.includes("task-list-item")
+function ListItem({ ordered, index, checked, className, children, position }: LiProps) {
+  const isTaskListItem = className?.includes("task-list-item")
 
   if (isTaskListItem) {
     return (
       // eslint-disable-next-line react/jsx-no-constructed-context-values
-      <TaskListItemContext.Provider value={{ position: node.position }}>
-        <li {...props} />
+      <TaskListItemContext.Provider value={{ position }}>
+        <li className={className}>
+          <CheckboxInput checked={checked} />
+          {children}
+        </li>
       </TaskListItemContext.Provider>
     )
   }
 
-  return <li {...props} />
+  return <li className={className}>{children}</li>
 }
 
 function CheckboxInput({ checked }: { checked?: boolean }) {

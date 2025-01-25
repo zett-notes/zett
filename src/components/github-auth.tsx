@@ -18,7 +18,7 @@ export function SignInButton(props: ButtonProps) {
       {...props}
       onClick={async (event) => {
         try {
-          const response = await fetch("/dev-token")
+          const response = await fetch("/github-auth")
           if (!response.ok) throw new Error("Failed to get token")
           const { token, login, name, email } = await response.json() as DevTokenResponse
           send({ type: "SIGN_IN", githubUser: { token, login, name, email } })

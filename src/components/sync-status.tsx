@@ -5,6 +5,10 @@ import { globalStateMachineAtom, isRepoClonedAtom } from "../global-state"
 import { cx } from "../utils/cx"
 import { CheckFillIcon16, ErrorFillIcon16, LoadingFillIcon16 } from "./icons"
 
+//  Types
+export type SyncStatusText = string | JSX.Element | null
+
+// Atoms
 const isSyncSuccessAtom = selectAtom(globalStateMachineAtom, (state) =>
   state.matches("signedIn.cloned.sync.success"),
 )
@@ -13,7 +17,8 @@ const isSyncErrorAtom = selectAtom(globalStateMachineAtom, (state) =>
   state.matches("signedIn.cloned.sync.error"),
 )
 
-export function useSyncStatusText() {
+// Hook
+export default function useSyncStatusText(): SyncStatusText {
   const isSyncSuccess = useAtomValue(isSyncSuccessAtom)
   const isSyncError = useAtomValue(isSyncErrorAtom)
   const isRepoCloned = useAtomValue(isRepoClonedAtom)
@@ -32,6 +37,7 @@ export function useSyncStatusText() {
   return "Syncing…"
 }
 
+// Component
 export function SyncStatusIcon({ className }: { className?: string }) {
   const isSyncSuccess = useAtomValue(isSyncSuccessAtom)
   const isSyncError = useAtomValue(isSyncErrorAtom)

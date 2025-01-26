@@ -1,19 +1,23 @@
 import { useAtomValue } from "jotai"
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { useNetworkState } from "react-use"
 import { ErrorIcon16, LoadingIcon16, OfflineIcon16 } from "../components/icons"
-import { githubRepoAtom, githubUserAtom } from "../global-state"
+import { githubRepoAtom, githubUserAtom, isRepoClonedAtom } from "../global-state"
 import { getFileUrl, readFile } from "../utils/fs"
 import { REPO_DIR } from "../utils/git"
 
-export const fileCache = new Map<string, { file: File; url: string }>()
-
-type FilePreviewProps = {
+// Types
+export type FilePreviewProps = {
   path: string
-  alt?: string
+  className?: string
 }
 
-export function FilePreview({ path, alt = "" }: FilePreviewProps) {
+// Constants
+const fileCache = new Map<string, { file: File; url: string }>()
+export { fileCache }
+
+// Component
+export default function FilePreview({ path, className }: FilePreviewProps) {
   const githubUser = useAtomValue(githubUserAtom)
   const githubRepo = useAtomValue(githubRepoAtom)
   const cachedFile = fileCache.get(path)
@@ -71,14 +75,14 @@ export function FilePreview({ path, alt = "" }: FilePreviewProps) {
 
   // Image
   if (file.type.startsWith("image/")) {
-    return <img src={url} alt={alt} />
+    return <img src={url} alt={path} className={className} />
   }
 
   // Video
   if (file.type.startsWith("video/")) {
     return (
       // eslint-disable-next-line jsx-a11y/media-has-caption
-      <video controls>
+      <video controls className={className}>
         <source src={url} type={file.type} />
       </video>
     )
@@ -87,17 +91,17 @@ export function FilePreview({ path, alt = "" }: FilePreviewProps) {
   // Audio
   if (file.type.startsWith("audio/")) {
     // eslint-disable-next-line jsx-a11y/media-has-caption
-    return <audio controls src={url} className="w-full max-w-lg" />
+    return <audio controls src={url} className={`w-full max-w-lg ${className}`} />
   }
 
   // PDF (< 3 MB)
   if (file.type === "application/pdf" && file.size < 3_000_000) {
-    return <iframe title={file.name} src={url} className="h-full w-full" />
+    return <iframe title={file.name} src={url} className={`h-full w-full ${className}`} />
   }
 
   return (
     <div>
-      <a download={file.name} href={url} className="link">
+      <a download={file.name} href={url} className={`link ${className}`}>
         Download {file.name} ({(file.size / 1_000_000).toFixed(1)} MB)
       </a>
     </div>

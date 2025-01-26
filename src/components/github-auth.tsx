@@ -1,14 +1,26 @@
 import { useSetAtom } from "jotai"
 import urlcat from "urlcat"
-import { globalStateMachineAtom } from "../global-state"
+import { globalStateMachineAtom, githubUserAtom } from "../global-state"
 import { Button, ButtonProps } from "./button"
 
-export function SignInButton(props: ButtonProps) {
+// Types
+export type SignInButtonProps = {
+  className?: string
+}
+
+// Hook
+export default function useSignOut() {
+  const setGithubUser = useSetAtom(githubUserAtom)
+  return () => setGithubUser(null)
+}
+
+// Component
+export function SignInButton({ className }: SignInButtonProps) {
   const send = useSetAtom(globalStateMachineAtom)
   return (
     <Button
       variant="primary"
-      {...props}
+      className={className}
       onClick={async (event) => {
         // Sign in with a personal access token in local development
         if (import.meta.env.DEV && import.meta.env.VITE_GITHUB_PAT) {
@@ -28,20 +40,12 @@ export function SignInButton(props: ButtonProps) {
           scope: "repo,gist,user:email",
         })
 
-        props.onClick?.(event)
+        event.preventDefault()
       }}
     >
       Sign in with GitHub
     </Button>
   )
-}
-
-export function useSignOut() {
-  const send = useSetAtom(globalStateMachineAtom)
-
-  return () => {
-    send({ type: "SIGN_OUT" })
-  }
 }
 
 async function getUser(token: string) {

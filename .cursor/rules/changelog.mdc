@@ -1,15 +1,16 @@
-# Changelog Rules v2
+---
+description: Guidelines for maintaining consistent changelog entries and documenting changes in the Zett project. This rule helps with tracking modifications, updates, and ensuring proper documentation of all changes.
+globs: *,**/*
+---
+
+# Changelog Rules
 
 ## Core Principles
-1. **One Change, One File**
-   - Each changelog documents a single logical change
-   - Keep changes focused and atomic
-   - Split large changes into smaller, related ones
-
-2. **Technical Focus**
-   - Write for developers
-   - Include actual code, errors, commands
-   - Use proper TypeScript/React conventions
+- Keep changes focused and atomic
+- Split large changes into smaller, related ones
+- Write for developers
+- Include actual code, errors, commands
+- Use proper TypeScript/React conventions
 
 ## File Structure
 ```

@@ -1,0 +1,120 @@
+.cm-editor {
+  @apply w-full cursor-text font-mono;
+}
+
+.cm-editor.cm-editor.cm-focused {
+  @apply outline-none;
+}
+
+.cm-editor .cm-content {
+  /* Hide the native cursor */
+  @apply fine:[caret-color:transparent];
+  width: 100%;
+  padding: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  flex-shrink: 1;
+}
+
+.cm-editor .cm-line {
+  padding: 0;
+  white-space: break-spaces;
+}
+
+.cm-editor .cm-scroller {
+  @apply leading-6;
+  font-family: unset;
+  overflow: hidden;
+}
+
+.cm-editor .cm-cursor {
+  border-left-width: 2px;
+  margin-left: 0px;
+}
+
+.cm-editor .cm-fat-cursor {
+  @apply bg-border-focus !text-bg;
+}
+
+/* Hide the cursor when the editor is not focused */
+.cm-editor:not(.cm-focused) .cm-fat-cursor {
+  @apply hidden;
+}
+
+.cm-editor .cm-panels {
+  @apply bg-bg-secondary text-text;
+}
+
+.cm-editor .cm-panels-bottom {
+  @apply mt-4 border-0;
+}
+
+.cm-editor .cm-vim-panel,
+.cm-editor .cm-vim-panel span {
+  @apply !font-mono;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete {
+  @apply card-2 max-w-sm border-0 p-1;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul {
+  @apply font-mono text-[inherit];
+}
+
+.cm-editor .cm-tooltip.cm-completionInfo {
+  @apply card-2 aspect-[5/3] w-96 max-w-none overflow-hidden whitespace-pre-wrap p-1 px-3 py-2 font-mono text-[inherit];
+  word-break: break-word;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
+  @apply flex rounded px-2 py-1 coarse:px-3 coarse:py-2;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+  @apply bg-bg-secondary text-text;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li .cm-completionDetail {
+  @apply ml-3 italic text-text-secondary;
+}
+
+.cm-editor .cm-completionMatchedText {
+  @apply no-underline;
+}
+
+.cm-editor .cm-placeholder {
+  @apply text-text-tertiary;
+}
+
+.cm-editor .cm-lineNumbers {
+  @apply pr-3;
+}
+
+.cm-editor .cm-lineNumbers .cm-gutterElement {
+  @apply min-w-[1.5rem] p-0;
+}
+
+.cm-editor .cm-foldPlaceholder {
+  @apply mx-0.5 rounded-sm border-none bg-bg-secondary px-1 text-text-secondary;
+}
+
+.cm-editor .cm-foldPlaceholder:hover {
+  @apply bg-bg-tertiary;
+}
+
+.cm-editor .cm-wikilink {
+  @apply -mx-0.5 rounded-sm bg-bg-tertiary px-0.5;
+}
+
+.cm-editor .cm-wikilink:hover {
+  @apply ring-1 ring-inset ring-border-secondary;
+}
+
+.cm-wikilinks-enabled .cm-editor .cm-wikilink {
+  @apply underline decoration-dotted decoration-1 underline-offset-[3px] ring-0;
+}
+
+.cm-wikilinks-enabled .cm-editor .cm-wikilink:hover {
+  @apply cursor-pointer decoration-solid ring-0;
+}

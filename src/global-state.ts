@@ -297,6 +297,9 @@ function createGlobalStateMachine() {
               email 
             }))
 
+            // Add 1 second delay to ensure localStorage is updated
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+
             const searchParams = new URLSearchParams(window.location.search)
 
             // Remove user metadata from URL

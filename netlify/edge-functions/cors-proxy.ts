@@ -53,35 +53,20 @@ export default async (request: Request) => {
     // and proxy the request to the remaining URL.
     const url = request.url.replace(/^.*\/cors-proxy\//, "https://")
 
-  // Filter request headers
-  const requestHeaders = new Headers()
-  for (const [key, value] of request.headers.entries()) {
-    if (ALLOW_HEADERS.includes(key.toLowerCase())) {
-      requestHeaders.set(key, value)
+    console.log("Proxying request to:", url)
+    console.log("Method:", request.method)
+    console.log("Original headers:", Object.fromEntries(request.headers.entries()))
+
+    // Filter request headers
+    const requestHeaders = new Headers()
+    for (const [key, value] of request.headers.entries()) {
+      if (ALLOW_HEADERS.includes(key.toLowerCase())) {
+        requestHeaders.set(key, value)
+      }
     }
 
-    // Set git-specific headers if this is a git request
-    if (url.includes('git-upload-pack')) {
-      requestHeaders.set('git-protocol', 'version=2')
-      requestHeaders.set('accept', 'application/x-git-upload-pack-result')
-
-      // Get username and password from Authorization header
-      const authHeader = request.headers.get('authorization')
-      if (authHeader?.startsWith('Bearer ')) {
-        const token = authHeader.slice(7)
-        // Use token as username with x-oauth-basic as password
-        const base64Credentials = btoa(`${token}:x-oauth-basic`)
-        requestHeaders.set('authorization', `Basic ${base64Credentials}`)
-      }
-
-      // Only set user-agent if not already set
-      if (!requestHeaders.has('user-agent')) {
-        requestHeaders.set('user-agent', 'git/lumen/cors-proxy')
-      }
-    } else {
-      // For non-git requests, always set our user-agent
-      requestHeaders.set('user-agent', 'git/lumen/cors-proxy')
-    }
+    // GitHub requests behave differently if the user-agent starts with "git/"
+    requestHeaders.set("user-agent", "git/lumen/cors-proxy")
 
     console.log("Filtered headers:", Object.fromEntries(requestHeaders.entries()))
 

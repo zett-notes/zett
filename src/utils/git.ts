@@ -32,6 +32,37 @@ const httpProxy: HttpClient = {
   }
 }
 
+function getAuthHeaders(user: GitHubUser, url: string): GitAuth {
+  // For git-upload-pack, use Basic auth with username and token
+  if (url.includes('git-upload-pack')) {
+    const base64Credentials = btoa(`${user.name}:${user.token}`)
+    return {
+      headers: {
+        'Authorization': `Basic ${base64Credentials}`,
+        'User-Agent': 'git/lumen'
+      }
+    }
+  }
+
+  // For API endpoints, use Bearer token for OAuth2 or token for PAT
+  if (user.tokenType === 'oauth2') {
+    return {
+      headers: {
+        'Authorization': `Bearer ${user.token}`,
+        'User-Agent': 'git/lumen'
+      }
+    }
+  }
+
+  // PAT with token prefix
+  return {
+    headers: {
+      'Authorization': `token ${user.token}`,
+      'User-Agent': 'git/lumen'
+    }
+  }
+}
+
 export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
   const options: Parameters<typeof git.clone>[0] = {
     fs,
@@ -43,26 +74,7 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     depth: 1,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: (): GitAuth => {
-      if (user.tokenType === 'oauth2') {
-        return {
-          username: 'oauth2',
-          password: user.token,
-          headers: {
-            'Authorization': `Bearer ${user.token}`,
-            'User-Agent': 'git/lumen',
-          }
-        }
-      }
-      // PAT
-      return {
-        token: user.token,
-        headers: {
-          'Authorization': `token ${user.token}`,
-          'User-Agent': 'git/lumen',
-        }
-      }
-    },
+    onAuth: (url) => getAuthHeaders(user, url),
   }
 
   // Wipe file system
@@ -96,26 +108,7 @@ export async function gitPull(user: GitHubUser, repo: GitHubRepository) {
     singleBranch: true,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: (): GitAuth => {
-      if (user.tokenType === 'oauth2') {
-        return {
-          username: 'oauth2',
-          password: user.token,
-          headers: {
-            'Authorization': `Bearer ${user.token}`,
-            'User-Agent': 'git/lumen',
-          }
-        }
-      }
-      // PAT
-      return {
-        token: user.token,
-        headers: {
-          'Authorization': `token ${user.token}`,
-          'User-Agent': 'git/lumen',
-        }
-      }
-    },
+    onAuth: (url) => getAuthHeaders(user, url),
   }
 
   const stopTimer = startTimer("git pull")
@@ -132,26 +125,7 @@ export async function gitPush(user: GitHubUser, repo: GitHubRepository) {
     ref: DEFAULT_BRANCH,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: (): GitAuth => {
-      if (user.tokenType === 'oauth2') {
-        return {
-          username: 'oauth2',
-          password: user.token,
-          headers: {
-            'Authorization': `Bearer ${user.token}`,
-            'User-Agent': 'git/lumen',
-          }
-        }
-      }
-      // PAT
-      return {
-        token: user.token,
-        headers: {
-          'Authorization': `token ${user.token}`,
-          'User-Agent': 'git/lumen',
-        }
-      }
-    },
+    onAuth: (url) => getAuthHeaders(user, url),
   }
 
   const stopTimer = startTimer("git push")

@@ -21,9 +21,9 @@ export default defineConfig({
       registerType: "prompt",
       injectRegister: "auto",
       manifest: {
-        name: "Lumen",
-        short_name: "Lumen",
-        description: "A simple note-taking app for better thinking",
+        name: "Zett",
+        short_name: "Zett",
+        description: "A personal note-taking app that helps you maintain calm and mindful life",
         theme_color: "#ffffff",
         icons: [
           {

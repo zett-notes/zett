@@ -1,0 +1,145 @@
+.markdown {
+  @apply leading-6;
+}
+
+.markdown *:first-child {
+  @apply mt-0;
+}
+
+.markdown *:last-child {
+  @apply mb-0;
+}
+
+.markdown :is(h1, h2, h3, h4, h5, h6, p, pre, ul, ol, table, blockquote) {
+  @apply my-3;
+}
+
+.markdown li :is(h1, h2, h3, h4, h5, h6, p, pre, ul, ol, table, blockquote) {
+  @apply my-2;
+}
+
+.markdown hr {
+  @apply my-4;
+}
+
+.markdown strong {
+  @apply font-bold;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6,
+.markdown th {
+  @apply font-bold;
+}
+
+.markdown h1 {
+  @apply text-xl coarse:!leading-7;
+}
+
+.markdown h2 {
+  @apply text-lg;
+}
+
+.markdown pre {
+  @apply overflow-auto rounded bg-bg-code-block p-3;
+}
+
+.markdown code {
+  @apply rounded-sm bg-bg-secondary px-1;
+}
+
+.markdown pre > code {
+  @apply rounded-none bg-transparent p-0;
+  font-style: unset;
+}
+
+.markdown pre > code::before,
+.markdown pre > code::after {
+  content: "";
+}
+
+.markdown hr {
+  @apply border-border-secondary;
+}
+
+.markdown ul {
+  @apply list-disc;
+}
+
+.markdown ol {
+  @apply list-decimal;
+}
+
+.markdown ul,
+.markdown ol {
+  @apply pl-6;
+}
+
+@media (pointer: coarse) {
+  .markdown ul,
+  .markdown ol {
+    @apply pl-7;
+  }
+}
+
+.markdown ul ul,
+.markdown ul ol,
+.markdown ol ul,
+.markdown ol ol {
+  @apply !mt-2 mb-2;
+}
+
+.markdown li {
+  @apply my-2;
+}
+
+.markdown li.task-list-item {
+  @apply relative list-none;
+}
+
+.markdown li [type="checkbox"],
+.markdown li [role="checkbox"] {
+  @apply absolute -left-2 mt-1 -translate-x-full coarse:mt-0.5;
+}
+
+.markdown ::marker {
+  @apply text-sm text-text-secondary;
+}
+
+.markdown table {
+  @apply block overflow-auto;
+}
+
+.markdown th,
+.markdown td {
+  @apply border border-border-table px-2 py-1;
+}
+
+.markdown blockquote {
+  @apply relative pl-4;
+}
+
+.markdown blockquote::before {
+  @apply absolute inset-y-0 left-0 w-[3px] rounded-full bg-border;
+  content: "";
+}
+
+.markdown a {
+  @apply link;
+}
+
+.markdown a[href^="http"] {
+  @apply link-external;
+}
+
+.markdown img {
+  @apply overflow-hidden rounded;
+}
+
+.markdown .katex-html {
+  display: none;
+}

@@ -1,0 +1,104 @@
+@import "./fonts.css";
+@import "./variables.css";
+@import "./markdown.css";
+@import "./codemirror.css";
+@import "./cmdk.css";
+@import "./prism.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-bg font-sans text-base font-normal text-text;
+}
+
+::selection {
+  background: var(--color-bg-selection);
+}
+
+/* .docs-story is the container for storybook stories on docs pages */
+.docs-story {
+  @apply bg-bg;
+}
+
+body,
+button {
+  font-variant-numeric: slashed-zero;
+}
+
+/* Hide the browser's default cancel button on search inputs */
+input[type="search"]::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+/* Show resize cursor when resizing */
+body:has([data-resizing="true"]) {
+  cursor: col-resize;
+}
+
+body:has([data-resizing="true"]) * {
+  pointer-events: none;
+}
+
+/* Focus styles for buttons, inputs, etc. */
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-focus;
+}
+
+/* Link */
+
+.link {
+  @apply focus-ring rounded-sm underline decoration-text-secondary decoration-dotted decoration-1 underline-offset-[3px];
+}
+
+.link:hover {
+  @apply decoration-solid;
+}
+
+.link-external::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background-color: var(--color-text-secondary);
+  mask-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOCIgaGVpZ2h0PSIxNiIgdmlld0JveD0iMCAwIDggMTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0yIDJoNXY1SDZWMy43MDdsLTQuNSA0LjVMLjc5MyA3LjVsNC41LTQuNUgyVjJaIiBmaWxsPSIjMDAwIi8+PC9zdmc+");
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
+/* Card */
+
+.card {
+  @apply rounded-lg border-0 ring-1 ring-border-secondary dark:ring-inset;
+}
+
+.card-1 {
+  @apply card bg-bg-card shadow;
+}
+
+.card-2 {
+  @apply card bg-bg-overlay-backdrop shadow-lg backdrop-blur-lg;
+}
+
+.card-3 {
+  @apply card bg-bg-overlay-backdrop shadow-2xl backdrop-blur-xl;
+}
+
+/* Nav item */
+
+.nav-item {
+  @apply flex h-8 items-center gap-3 rounded px-2 coarse:h-10 coarse:gap-4 coarse:px-3;
+}
+
+.nav-item:is(a, button) {
+  @apply focus-ring hover:bg-bg-secondary active:bg-bg-tertiary;
+}
+
+.nav-item[aria-current] {
+  @apply bg-bg-secondary font-bold;
+}
+
+.nav-item[data-size="large"] {
+  @apply h-10 gap-4 px-3;
+}

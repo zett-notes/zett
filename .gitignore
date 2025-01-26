@@ -29,3 +29,7 @@ stats.html
 
 # Local Netlify folder
 .netlify
+
+# Environment variables
+.env
+.env.*

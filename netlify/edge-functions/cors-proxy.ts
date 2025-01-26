@@ -69,6 +69,16 @@ export default async (request: Request) => {
     if (url.includes('git-upload-pack')) {
       requestHeaders.set('git-protocol', 'version=2')
       requestHeaders.set('accept', 'application/x-git-upload-pack-result')
+
+      // Get username and password from Authorization header
+      const authHeader = request.headers.get('authorization')
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.slice(7)
+        // Use token as username with x-oauth-basic as password
+        const base64Credentials = btoa(`${token}:x-oauth-basic`)
+        requestHeaders.set('authorization', `Basic ${base64Credentials}`)
+      }
+
       // Only set user-agent if not already set
       if (!requestHeaders.has('user-agent')) {
         requestHeaders.set('user-agent', 'git/lumen/cors-proxy')

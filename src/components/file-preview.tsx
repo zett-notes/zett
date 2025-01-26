@@ -10,6 +10,7 @@ import { REPO_DIR } from "../utils/git"
 export type FilePreviewProps = {
   path: string
   className?: string
+  alt?: string
 }
 
 // Cache
@@ -20,7 +21,7 @@ export function getFileCache() {
 }
 
 // Component
-export function FilePreview({ path, className }: FilePreviewProps) {
+export function FilePreview({ path, className, alt }: FilePreviewProps) {
   const githubUser = useAtomValue(githubUserAtom)
   const githubRepo = useAtomValue(githubRepoAtom)
   const cachedFile = _fileCache.get(path)
@@ -78,7 +79,7 @@ export function FilePreview({ path, className }: FilePreviewProps) {
 
   // Return file preview based on file type
   if (file.type.startsWith("image/")) {
-    return <img src={url} alt={file.name} className={className} />
+    return <img src={url} alt={alt ?? file.name} className={className} />
   }
 
   if (file.type.startsWith("video/")) {

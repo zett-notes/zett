@@ -53,9 +53,12 @@ export default async (request: Request) => {
     // and proxy the request to the remaining URL.
     const url = request.url.replace(/^.*\/cors-proxy\//, "https://")
 
-    console.log("Proxying request to:", url)
-    console.log("Method:", request.method)
-    console.log("Original headers:", Object.fromEntries(request.headers.entries()))
+    console.log("CORS Proxy Request:", {
+      originalUrl: request.url,
+      proxyUrl: url,
+      method: request.method,
+      headers: Object.fromEntries(request.headers.entries())
+    })
 
     // Filter request headers
     const requestHeaders = new Headers()
@@ -78,7 +81,7 @@ export default async (request: Request) => {
       requestHeaders.set('user-agent', 'git/lumen/cors-proxy')
     }
 
-    console.log("Filtered headers:", Object.fromEntries(requestHeaders.entries()))
+    console.log("Filtered Request Headers:", Object.fromEntries(requestHeaders.entries()))
 
     const response = await fetch(url, {
       method: request.method,
@@ -86,8 +89,11 @@ export default async (request: Request) => {
       body: request.body,
     })
 
-    console.log("Response status:", response.status)
-    console.log("Response headers:", Object.fromEntries(response.headers.entries()))
+    console.log("Response:", {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
+    })
 
     // Filter response headers
     const responseHeaders = new Headers()
@@ -97,7 +103,7 @@ export default async (request: Request) => {
       }
     }
 
-    console.log("Filtered response headers:", Object.fromEntries(responseHeaders.entries()))
+    console.log("Filtered Response Headers:", Object.fromEntries(responseHeaders.entries()))
 
     return new Response(response.body, {
       status: response.status,
@@ -105,7 +111,7 @@ export default async (request: Request) => {
       headers: responseHeaders,
     })
   } catch (error) {
-    console.error("Proxy error:", error)
+    console.error("CORS Proxy Error:", error)
     return new Response(`Proxy error: ${error.message}`, { status: 500 })
   }
 }

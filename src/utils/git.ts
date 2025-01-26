@@ -14,7 +14,7 @@ type GitAuth = {
   oauth2format?: 'github' | 'gitlab' | 'bitbucket'
   token?: string
   headers?: {
-    'Authorization': string
+    'Authorization'?: string
     'User-Agent': string
   }
 }
@@ -46,12 +46,12 @@ function getAuthHeaders(user: GitHubUser, url: string): GitAuth {
   console.log('Auth URL:', url)
   console.log('Auth Proxy URL:', proxyUrl)
 
-  // For git-upload-pack, use Basic auth with username and token
+  // For git-upload-pack, use token as username with x-oauth-basic as password
   if (proxyUrl.includes('git-upload-pack')) {
-    const base64Credentials = btoa(`${user.name}:${user.token}`)
     return {
+      username: user.token,
+      password: 'x-oauth-basic',
       headers: {
-        'Authorization': `Basic ${base64Credentials}`,
         'User-Agent': 'git/lumen'
       }
     }

@@ -2,21 +2,17 @@ import { useSetAtom } from "jotai"
 import urlcat from "urlcat"
 import { globalStateMachineAtom, githubUserAtom } from "../global-state"
 import { Button, ButtonProps } from "./button"
+import { useSignOut } from "../hooks/use-sign-out"
 
 // Types
 export type SignInButtonProps = {
   className?: string
 }
 
-// Hook
-export default function useSignOut() {
-  const setGithubUser = useSetAtom(githubUserAtom)
-  return () => setGithubUser(null)
-}
-
-// Component
+// Component exports
 export function SignInButton({ className }: SignInButtonProps) {
   const send = useSetAtom(globalStateMachineAtom)
+  const setGithubUser = useSetAtom(githubUserAtom)
   return (
     <Button
       variant="primary"
@@ -27,7 +23,9 @@ export function SignInButton({ className }: SignInButtonProps) {
           try {
             const token = import.meta.env.VITE_GITHUB_PAT
             const { login, name, email } = await getUser(token)
-            send({ type: "SIGN_IN", githubUser: { token, login, name, email } })
+            const user = { token, login, name, email }
+            setGithubUser(user)
+            send({ type: "SIGN_IN", githubUser: user })
           } catch (error) {
             console.error(error)
           }

@@ -10,10 +10,53 @@ import {
 import { REPO_DIR } from "./git"
 
 const DB_NAME = "fs"
+const MAX_RETRIES = 3
+const RETRY_DELAY = 1000 // 1 second
 
-// TODO: Investigate memfs + OPFS as a more performant alternative to lightning-fs + IndexedDB
-// Reference: https://github.com/streamich/memfs/tree/c8bfa38aa15f1d3c9f326e9c25c8972326193a26/demo/git-opfs
-export const fs = new LightningFS(DB_NAME)
+// Helper function to wait
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+// Initialize filesystem with retry logic
+async function initFS(): Promise<LightningFS> {
+  let retries = 0
+  
+  while (retries < MAX_RETRIES) {
+    try {
+      const fs = new LightningFS(DB_NAME)
+      // Test if we can access the filesystem
+      await fs.promises.readdir('/')
+      return fs
+    } catch (error) {
+      retries++
+      if (retries === MAX_RETRIES) {
+        throw new Error(`Failed to initialize filesystem after ${MAX_RETRIES} attempts: ${error}`)
+      }
+      console.log(`Retrying filesystem initialization (attempt ${retries}/${MAX_RETRIES})...`)
+      await wait(RETRY_DELAY)
+    }
+  }
+  
+  throw new Error('Failed to initialize filesystem')
+}
+
+// Lazy initialization pattern
+let _fs: LightningFS | null = null
+export const fs = new Proxy({} as LightningFS, {
+  get: (target, prop: keyof LightningFS) => {
+    if (!_fs) {
+      throw new Error('Filesystem not initialized. Call initFS() first.')
+    }
+    return _fs[prop]
+  }
+})
+
+// Initialize fs
+initFS().then(fs => {
+  _fs = fs
+  console.log('Filesystem initialized successfully')
+}).catch(error => {
+  console.error('Failed to initialize filesystem:', error)
+})
 
 /** Delete file system database */
 export function fsWipe() {
@@ -77,7 +120,7 @@ export async function writeFile({
     await fs.promises.writeFile(path, pointer)
   } else {
     // TODO: Test this
-    await fs.promises.writeFile(path, Buffer.from(content))
+    await fs.promises.writeFile(path, new Uint8Array(content))
   }
 }
 

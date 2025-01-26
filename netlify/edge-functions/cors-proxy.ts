@@ -47,41 +47,57 @@ const EXPOSE_HEADERS = [
 ]
 
 export default async (request: Request) => {
-  // The request URL will look like: "https://.../cors-proxy/example.com/..."
-  // We want to strip off the "https://.../cors-proxy/" part of the URL
-  // and proxy the request to the remaining URL.
-  const url = request.url.replace(/^.*\/cors-proxy\//, "https://")
+  try {
+    // The request URL will look like: "https://.../cors-proxy/example.com/..."
+    // We want to strip off the "https://.../cors-proxy/" part of the URL
+    // and proxy the request to the remaining URL.
+    const url = request.url.replace(/^.*\/cors-proxy\//, "https://")
 
-  // Filter request headers
-  const requestHeaders = new Headers()
-  for (const [key, value] of request.headers.entries()) {
-    if (ALLOW_HEADERS.includes(key.toLowerCase())) {
-      requestHeaders.set(key, value)
+    console.log("Proxying request to:", url)
+    console.log("Method:", request.method)
+    console.log("Original headers:", Object.fromEntries(request.headers.entries()))
+
+    // Filter request headers
+    const requestHeaders = new Headers()
+    for (const [key, value] of request.headers.entries()) {
+      if (ALLOW_HEADERS.includes(key.toLowerCase())) {
+        requestHeaders.set(key, value)
+      }
     }
-  }
 
-  // GitHub requests behave differently if the user-agent starts with "git/"
-  requestHeaders.set("user-agent", "git/lumen/cors-proxy")
+    // GitHub requests behave differently if the user-agent starts with "git/"
+    requestHeaders.set("user-agent", "git/lumen/cors-proxy")
 
-  const response = await fetch(url, {
-    method: request.method,
-    headers: requestHeaders,
-    body: request.body,
-  })
+    console.log("Filtered headers:", Object.fromEntries(requestHeaders.entries()))
 
-  // Filter response headers
-  const responseHeaders = new Headers()
-  for (const [key, value] of response.headers.entries()) {
-    if (EXPOSE_HEADERS.includes(key.toLowerCase())) {
-      responseHeaders.set(key, value)
+    const response = await fetch(url, {
+      method: request.method,
+      headers: requestHeaders,
+      body: request.body,
+    })
+
+    console.log("Response status:", response.status)
+    console.log("Response headers:", Object.fromEntries(response.headers.entries()))
+
+    // Filter response headers
+    const responseHeaders = new Headers()
+    for (const [key, value] of response.headers.entries()) {
+      if (EXPOSE_HEADERS.includes(key.toLowerCase())) {
+        responseHeaders.set(key, value)
+      }
     }
-  }
 
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: responseHeaders,
-  })
+    console.log("Filtered response headers:", Object.fromEntries(responseHeaders.entries()))
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+    })
+  } catch (error) {
+    console.error("Proxy error:", error)
+    return new Response(`Proxy error: ${error.message}`, { status: 500 })
+  }
 }
 
 export const config: Config = {

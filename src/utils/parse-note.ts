@@ -1,6 +1,6 @@
 import memoize from "fast-memoize"
 import { fromMarkdown } from "mdast-util-from-markdown"
-import { Node, Data } from "unist"
+import { Node } from "mdast-util-from-markdown/lib"
 import { gfmTaskListItemFromMarkdown } from "mdast-util-gfm-task-list-item"
 import { toString } from "mdast-util-to-string"
 import { gfmTaskListItem } from "micromark-extension-gfm-task-list-item"
@@ -21,23 +21,6 @@ import {
 import { parseFrontmatter } from "./parse-frontmatter"
 import { removeLeadingEmoji } from "./emoji"
 
-interface NodeData extends Data {
-  id?: string
-  name?: string
-  checked?: boolean
-  url?: string
-  [key: string]: unknown
-}
-
-interface CustomNode extends Node {
-  type: string
-  depth?: number
-  children?: CustomNode[]
-  data?: NodeData
-  checked?: boolean
-  url?: string | null
-}
-
 /**
  * Extract metadata from a note.
  *
@@ -56,19 +39,17 @@ export const parseNote = memoize((id: NoteId, content: string): Note => {
 
   const { frontmatter, content: contentWithoutFrontmatter } = parseFrontmatter(content)
 
-  function visitNode(node: CustomNode) {
+  function visitNode(node: Node) {
     switch (node.type) {
       case "heading": {
         // Only use the first heading
-        // @ts-ignore - we know this is safe because we check the type
-        if (node.depth && node.depth > 1 || title) return
+        if (node.depth > 1 || title) return
 
         title = toString(node)
 
         // Is there a link in the title?
-        // @ts-ignore - we know children exists on heading nodes
-        if (node.children && node.children.length === 1 && node.children[0].type === "link") {
-          url = node.children[0].url || null
+        if (node.children.length === 1 && node.children[0].type === "link") {
+          url = node.children[0].url
         }
 
         break
@@ -76,35 +57,28 @@ export const parseNote = memoize((id: NoteId, content: string): Note => {
 
       case "embed":
       case "wikilink": {
-        const id = node.data?.id
-        if (typeof id === 'string') {
-          links.add(id)
+        links.add(node.data.id)
 
-          if (isValidDateString(id)) {
-            dates.add(id)
-          }
+        if (isValidDateString(node.data.id)) {
+          dates.add(node.data.id)
         }
         break
       }
 
       case "tag": {
         // Add all parent tags (e.g. "foo/bar/baz" => "foo", "foo/bar", "foo/bar/baz")
-        const name = node.data?.name
-        if (typeof name === 'string') {
-          name.split("/").forEach((part: string, index: number) => {
-            tags.add(
-              name
-                .split("/")
-                .slice(0, index + 1)
-                .join("/"),
-            )
-          })
-        }
+        node.data.name.split("/").forEach((_, index) => {
+          tags.add(
+            node.data.name
+              .split("/")
+              .slice(0, index + 1)
+              .join("/"),
+          )
+        })
         break
       }
 
       case "listItem": {
-        // @ts-ignore - we know checked exists on task list items
         if (typeof node.checked === "boolean") {
           tasks.push({
             completed: node.checked === true,
@@ -133,7 +107,6 @@ export const parseNote = memoize((id: NoteId, content: string): Note => {
     { extensions, mdastExtensions },
   )
 
-  // @ts-ignore - we know the node types are compatible
   visit(contentMdast, visitNode)
 
   // Parse frontmatter as markdown to find things like wikilinks and tags
@@ -144,7 +117,6 @@ export const parseNote = memoize((id: NoteId, content: string): Note => {
     { extensions, mdastExtensions },
   )
 
-  // @ts-ignore - we know the node types are compatible
   visit(frontmatterMdast, visitNode)
 
   // Check for dates in the frontmatter

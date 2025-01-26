@@ -3,91 +3,24 @@ import http from "isomorphic-git/http/web"
 import { GitHubRepository, GitHubUser } from "../schema"
 import { fs, fsWipe } from "./fs"
 import { startTimer } from "./timer"
-import type { HttpClient } from 'isomorphic-git'
 
 export const REPO_DIR = "/repo"
 const DEFAULT_BRANCH = "main"
 
-type GitAuth = {
-  username?: string
-  password?: string
-  oauth2format?: 'github' | 'gitlab' | 'bitbucket'
-  token?: string
-  headers?: {
-    'Authorization'?: string
-    'User-Agent': string
-  }
-}
-
-// Add custom HTTP handler through proxy
-const httpProxy: HttpClient = {
-  request: async ({ url, method, headers, body }) => {
-    // Remove protocol from the URL before adding it to proxy
-    const urlWithoutProtocol = url.replace(/^https?:\/\//, '')
-    const proxyUrl = `${import.meta.env.VITE_CORS_PROXY}/${urlWithoutProtocol}`
-    
-    console.log('Original URL:', url)
-    console.log('Proxy URL:', proxyUrl)
-    
-    return http.request({
-      url: proxyUrl,
-      method,
-      headers,
-      body
-    })
-  }
-}
-
-function getAuthHeaders(user: GitHubUser, url: string): GitAuth {
-  // Get the proxy URL that will be used - remove protocol first
-  const urlWithoutProtocol = url.replace(/^https?:\/\//, '')
-  const proxyUrl = `${import.meta.env.VITE_CORS_PROXY}/${urlWithoutProtocol}`
-
-  console.log('Auth URL:', url)
-  console.log('Auth Proxy URL:', proxyUrl)
-
-  // For git-upload-pack, use token as username with x-oauth-basic as password
-  if (proxyUrl.includes('git-upload-pack')) {
-    return {
-      username: user.token,
-      password: 'x-oauth-basic',
-      headers: {
-        'User-Agent': 'git/lumen'
-      }
-    }
-  }
-
-  // For API endpoints, use Bearer token for OAuth2 or token for PAT
-  if (user.tokenType === 'oauth2') {
-    return {
-      headers: {
-        'Authorization': `Bearer ${user.token}`,
-        'User-Agent': 'git/lumen'
-      }
-    }
-  }
-
-  // PAT with token prefix
-  return {
-    headers: {
-      'Authorization': `token ${user.token}`,
-      'User-Agent': 'git/lumen'
-    }
-  }
-}
-
 export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
   const options: Parameters<typeof git.clone>[0] = {
     fs,
-    http: httpProxy,
+    http,
     dir: REPO_DIR,
-    url: `https://github.com/${repo.owner}/${repo.name}.git`,
+    // corsProxy: "https://cors.isomorphic-git.org",
+    corsProxy: "/cors-proxy",
+    url: `https://github.com/${repo.owner}/${repo.name}`,
     ref: DEFAULT_BRANCH,
     singleBranch: true,
     depth: 1,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: (url) => getAuthHeaders(user, url),
+    onAuth: () => ({ username: user.login, password: user.token }),
   }
 
   // Wipe file system
@@ -111,17 +44,15 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
   stopTimer()
 }
 
-export async function gitPull(user: GitHubUser, repo: GitHubRepository) {
+export async function gitPull(user: GitHubUser) {
   const options: Parameters<typeof git.pull>[0] = {
     fs,
-    http: httpProxy,
+    http,
     dir: REPO_DIR,
-    url: `https://github.com/${repo.owner}/${repo.name}.git`,
-    ref: DEFAULT_BRANCH,
     singleBranch: true,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: (url) => getAuthHeaders(user, url),
+    onAuth: () => ({ username: user.login, password: user.token }),
   }
 
   const stopTimer = startTimer("git pull")
@@ -129,16 +60,14 @@ export async function gitPull(user: GitHubUser, repo: GitHubRepository) {
   stopTimer()
 }
 
-export async function gitPush(user: GitHubUser, repo: GitHubRepository) {
+export async function gitPush(user: GitHubUser) {
   const options: Parameters<typeof git.push>[0] = {
     fs,
-    http: httpProxy,
+    http,
     dir: REPO_DIR,
-    url: `https://github.com/${repo.owner}/${repo.name}.git`,
-    ref: DEFAULT_BRANCH,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
-    onAuth: (url) => getAuthHeaders(user, url),
+    onAuth: () => ({ username: user.login, password: user.token }),
   }
 
   const stopTimer = startTimer("git push")

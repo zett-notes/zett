@@ -5,17 +5,12 @@ import { isToday } from "date-fns"
 import { useAtomValue } from "jotai"
 import { selectAtom } from "jotai/utils"
 import React, { useMemo } from "react"
-import ReactMarkdown, { Options, Components } from "react-markdown"
-import type { ComponentPropsWithoutRef } from "react"
-import type { Position } from "unist"
-import type { Plugin } from "unified"
-import type { Root } from "mdast"
+import ReactMarkdown from "react-markdown"
+import { CodeProps, LiProps, Position } from "react-markdown/lib/ast-to-react"
 import { useNetworkState } from "react-use"
 import rehypeKatex from "rehype-katex"
 import remarkGfm from "remark-gfm"
-import remarkBreaks from "remark-breaks"
 import remarkMath from "remark-math"
-import "katex/dist/katex.min.css"
 import { z } from "zod"
 import { notesAtom } from "../global-state"
 import { UPLOADS_DIR } from "../hooks/attach-file"
@@ -59,7 +54,6 @@ import { SyntaxHighlighter, TemplateSyntaxHighlighter } from "./syntax-highlight
 import { TagLink } from "./tag-link"
 import { Tooltip } from "./tooltip"
 import { WebsiteFavicon } from "./website-favicon"
-import { ErrorBoundary } from "react-error-boundary"
 
 export type MarkdownProps = {
   children: string
@@ -149,12 +143,12 @@ export const Markdown = React.memo(
               ) : null}
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-4 empty:hidden">
-                  {title ? <SafeMarkdownContent>{title}</SafeMarkdownContent> : null}
+                  {title ? <MarkdownContent>{title}</MarkdownContent> : null}
                   {frontmatter && !hideFrontmatter && !isObjectEmpty(frontmatter) ? (
                     <Frontmatter frontmatter={frontmatter} />
                   ) : null}
                 </div>
-                {body ? <SafeMarkdownContent>{body}</SafeMarkdownContent> : null}
+                {body ? <MarkdownContent>{body}</MarkdownContent> : null}
               </div>
             </>
           )}
@@ -163,19 +157,6 @@ export const Markdown = React.memo(
     )
   },
 )
-
-type CodeProps = ComponentPropsWithoutRef<"code"> & {
-  inline?: boolean
-  children?: React.ReactNode
-}
-
-type LiProps = ComponentPropsWithoutRef<"li"> & {
-  ordered?: boolean
-  index?: number
-  checked?: boolean
-  children?: React.ReactNode
-  position?: Position
-}
 
 function isObjectEmpty(obj: Record<string, unknown>) {
   return Object.keys(obj).length === 0
@@ -187,50 +168,59 @@ function MarkdownContent({ children, className }: { children: string; className?
       className={cx("markdown", className)}
       remarkPlugins={[
         remarkGfm,
-        remarkBreaks,  // Handle line breaks properly
+        // remarkEmoji,
         remarkWikilink,
         remarkEmbed,
         remarkTag,
-        [remarkMath, { 
-          singleDollarTextMath: false,
-          strict: false 
-        }],
-      ] as Options["remarkPlugins"]}
-      rehypePlugins={[
-        [rehypeKatex, {
-          throwOnError: false,
-          strict: false,
-          trust: true,
-          macros: {
-            "\\eqref": "\\href{#1}{}",  // Handle equation references
-          }
-        }]
-      ] as Options["rehypePlugins"]}
+        [remarkMath, { singleDollarTextMath: false }],
+      ]}
+      rehypePlugins={[rehypeKatex]}
+      remarkRehypeOptions={{
+        handlers: {
+          // TODO: Improve type-safety of `node`
+          rehypeKatex(h, node) {
+            return h(node, "math", {
+              output: "mathml",
+            })
+          },
+          wikilink(h, node) {
+            return h(node, "wikilink", {
+              id: node.data.id,
+              text: node.data.text,
+            })
+          },
+          embed(h, node) {
+            return h(node, "embed", {
+              id: node.data.id,
+              text: node.data.text,
+            })
+          },
+          tag(h, node) {
+            return h(node, "tag", {
+              name: node.data.name,
+            })
+          },
+        },
+      }}
       components={{
         a: Anchor,
         img: Image,
         input: CheckboxInput,
         li: ListItem,
-        pre: ({ children }) => <div className="relative group">{children}</div>,
+        // Delegate rendering of the <pre> element to the Code component
+        pre: ({ children }) => <>{children}</>,
         code: Code,
+        // @ts-ignore I don't know how to extend the list of accepted component keys
         wikilink: NoteLink,
+        // @ts-ignore
         embed: NoteEmbed,
+        // @ts-ignore
         tag: TagLink,
-      } as Partial<Components>}
+      }}
     >
       {children}
     </ReactMarkdown>
   )
-}
-
-type CustomComponents = Components & {
-  wikilink: React.ComponentType<NoteEmbedProps>
-  embed: React.ComponentType<NoteEmbedProps>
-  tag: React.ComponentType<TagProps>
-}
-
-type TagProps = {
-  name: string
 }
 
 function BookCover({ isbn }: { isbn: string }) {
@@ -640,24 +630,29 @@ function Image(props: React.ComponentPropsWithoutRef<"img">) {
 }
 
 function Code({ className, inline, children }: CodeProps) {
-  const match = /language-(\w+)/.exec(className || "")
+  if (className?.includes("language-math")) {
+    return <div>{children}</div>
+  }
 
   if (inline) {
     return <code className={className}>{children}</code>
   }
 
+  const language = className?.replace("language-", "")
+
+  if (language === "query") {
+    // Display the results of a query instead of the query itself
+    return <QueryResults query={String(children)} />
+  }
+
   return (
-    <div className="relative group">
-      <pre className={cx("overflow-x-auto", className)}>
-        <code className={className}>
-          {children}
-        </code>
-      </pre>
-      {children && (
-        <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <CopyButton text={children?.toString() || ""} />
+    <div className="relative">
+      <pre className="!pe-12">
+        <div className="absolute end-2 top-2 rounded bg-bg-code-block coarse:end-1 coarse:top-1">
+          <CopyButton text={children.toString()} />
         </div>
-      )}
+        <SyntaxHighlighter language={language}>{children}</SyntaxHighlighter>
+      </pre>
     </div>
   )
 }
@@ -666,22 +661,19 @@ const TaskListItemContext = React.createContext<{
   position?: Position
 } | null>(null)
 
-function ListItem({ ordered, index, checked, className, children, position }: LiProps) {
-  const isTaskListItem = className?.includes("task-list-item")
+function ListItem({ node, ordered, index, ...props }: LiProps) {
+  const isTaskListItem = props.className?.includes("task-list-item")
 
   if (isTaskListItem) {
     return (
       // eslint-disable-next-line react/jsx-no-constructed-context-values
-      <TaskListItemContext.Provider value={{ position }}>
-        <li className={className}>
-          <CheckboxInput checked={checked} />
-          {children}
-        </li>
+      <TaskListItemContext.Provider value={{ position: node.position }}>
+        <li {...props} />
       </TaskListItemContext.Provider>
     )
   }
 
-  return <li className={className}>{children}</li>
+  return <li {...props} />
 }
 
 function CheckboxInput({ checked }: { checked?: boolean }) {
@@ -847,7 +839,6 @@ function DateLink({ date, text, className }: DateLinkProps) {
     <HoverCard.Root>
       <HoverCard.Trigger asChild>
         <Link
-          ref={React.createRef()}
           className={className}
           to="/notes/$"
           params={{ _splat: date }}
@@ -895,7 +886,6 @@ function WeekLink({ week, text, className }: WeekLinkProps) {
     <HoverCard.Root>
       <HoverCard.Trigger asChild>
         <Link
-          ref={React.createRef()}
           className={className}
           to="/notes/$"
           params={{ _splat: week }}
@@ -927,30 +917,4 @@ function WeekLink({ week, text, className }: WeekLinkProps) {
  */
 function checkIsFirst(element: HTMLElement) {
   return element.previousSibling === null
-}
-
-function MarkdownError({ error }: { error: Error }) {
-  return (
-    <div className="rounded-md bg-bg-danger/10 p-4">
-      <div className="flex">
-        <div className="flex-shrink-0">
-          <ErrorIcon16 className="text-text-danger" />
-        </div>
-        <div className="ml-3">
-          <h3 className="text-sm font-medium text-text-danger">Error rendering markdown</h3>
-          <div className="mt-2 text-sm text-text-danger/90">
-            <p>{error.message}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function SafeMarkdownContent({ children, className }: { children: string; className?: string }) {
-  return (
-    <ErrorBoundary FallbackComponent={MarkdownError}>
-      <MarkdownContent className={className}>{children}</MarkdownContent>
-    </ErrorBoundary>
-  )
 }

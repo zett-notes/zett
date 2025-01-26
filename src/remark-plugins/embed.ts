@@ -1,38 +1,29 @@
-declare module "micromark-util-types" {
-  interface TokenTypeMap {
-    embed: "embed"
-    embedMarker: "embedMarker"
-    embedId: "embedId"
-    embedSeparator: "embedSeparator"
-    embedText: "embedText"
-  }
-}
+// Copied from wikilink.ts
 
 import { Root } from "mdast"
-import { Extension as FromMarkdownExtension, Token } from "mdast-util-from-markdown"
+import { Extension as FromMarkdownExtension } from "mdast-util-from-markdown"
 import { codes } from "micromark-util-symbol/codes"
-import {
-  Code,
-  Construct,
-  Extension,
-  HtmlExtension,
-  State,
-  Tokenizer,
-  TokenType,
-} from "micromark-util-types"
+import { Code, Construct, Extension, HtmlExtension, State, Tokenizer } from "micromark-util-types"
 import { Plugin } from "unified"
-import { Node } from "unist" // Removed import { VFile } from "vfile"
-// Removed unused interface Options
+import { Node } from "unist"
+
+const types = {
+  embed: "embed",
+  embedMarker: "embedMarker",
+  embedId: "embedId",
+  embedSeparator: "embedSeparator",
+  embedText: "embedText",
+}
 
 /** Syntax extension (text -> tokens) */
 export function embed(): Extension {
   const tokenize: Tokenizer = (effects, ok, nok) => {
     return enter
 
-    function enter(code: Code): State | undefined {
+    function enter(code: Code): State | void {
       if (isExclamationMarkChar(code)) {
-        effects.enter("embed" as TokenType)
-        effects.enter("embedMarker" as TokenType)
+        effects.enter(types.embed)
+        effects.enter(types.embedMarker)
         effects.consume(code)
         return enterOpeningMarker
       } else {
@@ -40,7 +31,7 @@ export function embed(): Extension {
       }
     }
 
-    function enterOpeningMarker(code: Code): State | undefined {
+    function enterOpeningMarker(code: Code): State | void {
       if (isOpeningMarkerChar(code)) {
         effects.consume(code)
         return exitOpeningMarker
@@ -49,19 +40,20 @@ export function embed(): Extension {
       }
     }
 
-    function exitOpeningMarker(code: Code): State | undefined {
+    function exitOpeningMarker(code: Code): State | void {
       if (isOpeningMarkerChar(code)) {
         effects.consume(code)
-        effects.exit("embedMarker" as TokenType)
+        effects.exit(types.embedMarker)
+
         return enterId
       } else {
         return nok(code)
       }
     }
 
-    function enterId(code: Code): State | undefined {
+    function enterId(code: Code): State | void {
       if (isFilenameChar(code)) {
-        effects.enter("embedId" as TokenType)
+        effects.enter(types.embedId)
         effects.consume(code)
         return continueId
       } else {
@@ -69,16 +61,16 @@ export function embed(): Extension {
       }
     }
 
-    function continueId(code: Code): State | undefined {
+    function continueId(code: Code): State | void {
       if (isSeparatorChar(code)) {
-        effects.exit("embedId" as TokenType)
-        effects.enter("embedSeparator" as TokenType)
+        effects.exit(types.embedId)
+        effects.enter(types.embedSeparator)
         effects.consume(code)
-        effects.exit("embedSeparator" as TokenType)
+        effects.exit(types.embedSeparator)
         return enterText
       } else if (isClosingMarkerChar(code)) {
-        effects.exit("embedId" as TokenType)
-        effects.enter("embedMarker" as TokenType)
+        effects.exit(types.embedId)
+        effects.enter(types.embedMarker)
         effects.consume(code)
         return exitClosingMarker
       } else if (isFilenameChar(code)) {
@@ -89,9 +81,9 @@ export function embed(): Extension {
       }
     }
 
-    function enterText(code: Code): State | undefined {
+    function enterText(code: Code): State | void {
       if (isTextChar(code)) {
-        effects.enter("embedText" as TokenType)
+        effects.enter(types.embedText)
         effects.consume(code)
         return continueText
       } else {
@@ -99,13 +91,13 @@ export function embed(): Extension {
       }
     }
 
-    function continueText(code: Code): State | undefined {
+    function continueText(code: Code): State | void {
       if (isTextChar(code)) {
         effects.consume(code)
         return continueText
       } else if (isClosingMarkerChar(code)) {
-        effects.exit("embedText" as TokenType)
-        effects.enter("embedMarker" as TokenType)
+        effects.exit(types.embedText)
+        effects.enter(types.embedMarker)
         effects.consume(code)
         return exitClosingMarker
       } else {
@@ -113,18 +105,17 @@ export function embed(): Extension {
       }
     }
 
-    function exitClosingMarker(code: Code): State | undefined {
+    function exitClosingMarker(code: Code): State | void {
       if (isClosingMarkerChar(code)) {
         effects.consume(code)
-        effects.exit("embedMarker" as TokenType)
-        effects.exit("embed" as TokenType)
+        effects.exit(types.embedMarker)
+        effects.exit(types.embed)
         return ok
       } else {
         return nok(code)
       }
     }
   }
-
   const construct: Construct = {
     name: "embed",
     tokenize,
@@ -201,21 +192,24 @@ function isTextChar(code: Code): boolean {
  * This is only used for unit testing
  */
 export function embedHtml(): HtmlExtension {
+  // Initialize state
   let id: string | undefined
   let text: string | undefined
 
   return {
     enter: {
-      embedId(token: Token) {
+      [types.embedId](token) {
         id = this.sliceSerialize(token)
       },
-      embedText(token: Token) {
+      [types.embedText](token) {
         text = this.sliceSerialize(token)
       },
     },
     exit: {
-      embed() {
+      [types.embed]() {
         this.tag(`<embed id="${id}" text="${text || id}" />`)
+
+        // Reset state
         id = undefined
         text = undefined
       },
@@ -237,29 +231,34 @@ declare module "mdast" {
 
 /** MDAST extension (tokens -> MDAST) */
 export function embedFromMarkdown(): FromMarkdownExtension {
+  // Initialize state
   let id: string | undefined
   let text: string | undefined
 
   return {
     enter: {
-      embed(token: Token) {
-        const node = { type: "embed", data: { id: "", text: "" } } as Embed
-        // @ts-ignore - we know this is safe because we've defined the Embed type
-        this.enter(node, token)
+      [types.embed](token) {
+        this.enter({ type: "embed", data: { id: "", text: "" } }, token)
       },
-      embedId(token: Token) {
+      [types.embedId](token) {
         id = this.sliceSerialize(token)
       },
-      embedText(token: Token) {
+      [types.embedText](token) {
         text = this.sliceSerialize(token)
       },
     },
     exit: {
-      embed(token: Token) {
-        const node = this.stack[this.stack.length - 1] as unknown as Embed
-        node.data.id = id || ""
-        node.data.text = text || id || ""
+      [types.embed](token) {
+        const node = this.stack[this.stack.length - 1]
+
+        if (node.type === "embed") {
+          node.data.id = id || ""
+          node.data.text = text || id || ""
+        }
+
         this.exit(token)
+
+        // Reset state
         id = undefined
         text = undefined
       },
@@ -269,10 +268,10 @@ export function embedFromMarkdown(): FromMarkdownExtension {
 
 /**
  * Remark plugin
- * Safely add micromark and fromMarkdown extensions to this.data().
+ * Reference: https://github.com/remarkjs/remark-gfm/blob/main/index.js
  */
 export function remarkEmbed(): ReturnType<Plugin<[], Root>> {
-  // @ts-ignore - we know this will be bound to the processor instance
+  // @ts-ignore I'm not sure how to type `this`
   const data = this.data()
 
   add("micromarkExtensions", embed())

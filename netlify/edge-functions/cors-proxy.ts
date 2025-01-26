@@ -28,7 +28,6 @@ const ALLOW_HEADERS = [
 const EXPOSE_HEADERS = [
   "accept-ranges",
   "age",
-  "authorization",
   "cache-control",
   "content-length",
   "content-language",
@@ -47,83 +46,41 @@ const EXPOSE_HEADERS = [
 ]
 
 export default async (request: Request) => {
-  try {
-    // The request URL will look like: "https://.../cors-proxy/example.com/..."
-    // We want to strip off the "https://.../cors-proxy/" part of the URL
-    // and proxy the request to the remaining URL.
-    const url = request.url.replace(/^.*\/cors-proxy\//, "https://")
+  // The request URL will look like: "https://.../cors-proxy/example.com/..."
+  // We want to strip off the "https://.../cors-proxy/" part of the URL
+  // and proxy the request to the remaining URL.
+  const url = request.url.replace(/^.*\/cors-proxy\//, "https://")
 
-    console.log("CORS Proxy Request:", {
-      originalUrl: request.url,
-      proxyUrl: url,
-      method: request.method,
-      headers: Object.fromEntries(request.headers.entries())
-    })
-
-    // Filter request headers
-    const requestHeaders = new Headers()
-    for (const [key, value] of request.headers.entries()) {
-      if (ALLOW_HEADERS.includes(key.toLowerCase())) {
-        requestHeaders.set(key, value)
-      }
+  // Filter request headers
+  const requestHeaders = new Headers()
+  for (const [key, value] of request.headers.entries()) {
+    if (ALLOW_HEADERS.includes(key.toLowerCase())) {
+      requestHeaders.set(key, value)
     }
-
-    // Set git-specific headers if this is a git request
-    if (url.includes('git-upload-pack')) {
-      requestHeaders.set('git-protocol', 'version=2')
-      requestHeaders.set('accept', 'application/x-git-upload-pack-result')
-
-      // Get username and password from Authorization header
-      const authHeader = request.headers.get('authorization')
-      if (authHeader?.startsWith('Bearer ')) {
-        const token = authHeader.slice(7)
-        // Use token as username with x-oauth-basic as password
-        const base64Credentials = btoa(`${token}:x-oauth-basic`)
-        requestHeaders.set('authorization', `Basic ${base64Credentials}`)
-      }
-
-      // Only set user-agent if not already set
-      if (!requestHeaders.has('user-agent')) {
-        requestHeaders.set('user-agent', 'git/lumen/cors-proxy')
-      }
-    } else {
-      // For non-git requests, always set our user-agent
-      requestHeaders.set('user-agent', 'git/lumen/cors-proxy')
-    }
-
-    console.log("Filtered Request Headers:", Object.fromEntries(requestHeaders.entries()))
-
-    const response = await fetch(url, {
-      method: request.method,
-      headers: requestHeaders,
-      body: request.body,
-    })
-
-    console.log("Response:", {
-      status: response.status,
-      statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries())
-    })
-
-    // Filter response headers
-    const responseHeaders = new Headers()
-    for (const [key, value] of response.headers.entries()) {
-      if (EXPOSE_HEADERS.includes(key.toLowerCase())) {
-        responseHeaders.set(key, value)
-      }
-    }
-
-    console.log("Filtered Response Headers:", Object.fromEntries(responseHeaders.entries()))
-
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: responseHeaders,
-    })
-  } catch (error) {
-    console.error("CORS Proxy Error:", error)
-    return new Response(`Proxy error: ${error.message}`, { status: 500 })
   }
+
+  // GitHub requests behave differently if the user-agent starts with "git/"
+  requestHeaders.set("user-agent", "git/lumen/cors-proxy")
+
+  const response = await fetch(url, {
+    method: request.method,
+    headers: requestHeaders,
+    body: request.body,
+  })
+
+  // Filter response headers
+  const responseHeaders = new Headers()
+  for (const [key, value] of response.headers.entries()) {
+    if (EXPOSE_HEADERS.includes(key.toLowerCase())) {
+      responseHeaders.set(key, value)
+    }
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: responseHeaders,
+  })
 }
 
 export const config: Config = {

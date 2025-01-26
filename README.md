@@ -1,73 +1,69 @@
-# Numen
+# Lumen
 
-> Divine note-taking for mortal thoughts
+Lumen is a simple note-taking app for better thinking.
 
-Numen is a powerful note-taking app that puts **you** in control. Born as a fork of [Lumen](https://github.com/lumen-notes/lumen), it evolves the concept of personal knowledge management with a focus on privacy, flexibility, and user empowerment.
+[**Open Lumen →**](https://app.uselumen.com)
 
-## 🌟 Key Features
+> [!WARNING] 
+> Work in progress. Expect breaking changes. Follow [@uselumen.com](https://bsky.app/profile/uselumen.com) on Bluesky for updates.
 
-- **📝 Universal Storage** - Store your notes locally or sync with any Git provider (not just GitHub)
-- **🔒 Privacy First** - Your thoughts remain yours, with no mandatory cloud dependencies
-- **⚡ Lightning Fast** - Blazing fast search and navigation, works offline by default
-- **🎨 Beautiful UI** - Clean, modern interface that stays out of your way
-- **🔗 Smart Connections** - Discover relationships between your notes organically
-- **📱 Cross-Platform** - Access your notes from any device, any time
-- **🎯 Markdown Perfect** - True to the Markdown standard, plays nice with other editors
+Think of Lumen as your _private knowledge garden_. It's where you plant, grow, and harvest ideas.
 
-## 🚀 Why Numen?
+ - **🌱 Plant**
 
-In ancient Rome, a "numen" was a divine power or spirit believed to inhabit natural objects. Similarly, Numen helps you capture and nurture the divine spark of your ideas.
+   Write notes in [markdown](/docs/markdown-syntax.md) files and store them in a GitHub repository of your choice. You own your data, forever.
 
-While Lumen is an excellent note-taking app, Numen takes it further by:
-- Removing the GitHub lock-in
-- Enhancing Markdown compatibility
-- Prioritizing user privacy
-- Adding flexible storage options
-- Improving cross-editor compatibility
+ - **🌿 Grow**
 
-## 🛠️ Getting Started
+   Connect your notes with links and tags. Lumen makes it easy to explore your knowledge graph and discover new connections.
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/numen
-cd numen
+ - **🌻 Harvest**
 
-# Install dependencies
-npm install
+   Access your notes from anywhere—even offline. Use Lumen's flexible [query language](/docs/query-language.md) to find exactly what you're looking for.
 
-# Start the development server
-npm run dev
-```
+<br />
 
-## 📖 Documentation
+Notes in Lumen are...
 
-- [Installation Guide](docs/installation.md)
-- [Storage Options](docs/storage.md)
-- [Markdown Syntax](docs/markdown-syntax.md)
-- [Keyboard Shortcuts](docs/keyboard-shortcuts.md)
-- [Migration Guide](docs/migration.md)
+- written in [markdown](/docs/markdown-syntax.md)
+- stored as files on GitHub
+- version-controlled with Git
+- interconnected
+- searchable
+- available offline
+- accessible on any device
+- compatible with [other apps](#alternatives)
 
-## 🤝 Contributing
+## Docs
 
-We believe in the power of community. Whether it's:
-- 🐛 Bug reports
-- 💡 Feature suggestions
-- 🔧 Code contributions
-- 📚 Documentation improvements
+- [Markdown syntax](/docs/markdown-syntax.md)
+- [Metadata](/docs/metadata.md)
+- [Templates](/docs/templates.md)
+- [Query language](/docs/query-language.md)
+- [Keyboard shortcuts](/docs/keyboard-shortcuts.md)
+- [Status](/docs/status.md)
+- [Contributing](https://github.com/lumen-notes/lumen/blob/main/CONTRIBUTING.md)
 
-All contributions are welcome! See our [Contributing Guide](CONTRIBUTING.md) for details.
+## Recommended reading
 
-## 📜 License
+- [Introduction to the Zettelkasten Method by Sascha](https://zettelkasten.de/introduction/)
+- [How To Take Smart Notes by Sönke Ahrens](https://takesmartnotes.com/)
+- [Digital Zettelkasten by David Kadavy](https://www.amazon.com/dp/0578928094)
+- [Andy Matuschak's notes](https://notes.andymatuschak.org/)
 
-MIT License - See [LICENSE](LICENSE) for details.
+## Alternatives
 
-## 🙏 Acknowledgments
-
-- Thanks to the original [Lumen](https://github.com/lumen-notes/lumen) project for the inspiration
-- Built with React, TypeScript, and ❤️
+- [Bear](https://bear.app)
+- [Foam](https://foambubble.github.io/foam)
+- [iA Writer](https://ia.net/writer)
+- [Logseq](https://logseq.com)
+- [Obsidian](https://obsidian.md)
+- [Reflect](https://reflect.app)
+- [Roam Research](https://roamresearch.com)
+- [Supernotes](https://supernotes.app)
+- [Tana](https://tana.inc)
+- [Tangent](https://www.tangentnotes.com)
 
 ---
 
-<p align="center">
-  <strong>Your thoughts, elevated.</strong>
-</p>
+[GitHub](https://github.com/lumen-notes/lumen)&nbsp;&nbsp;·&nbsp;&nbsp;[Twitter](https://twitter.com/lumen_notes)

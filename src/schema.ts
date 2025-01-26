@@ -51,7 +51,6 @@ export type GitHubRepository = {
 
 export const githubUserSchema = z.object({
   token: z.string(),
-  tokenType: z.enum(['oauth2', 'pat']),
   login: z.string(),
   name: z.string(),
   email: z.string(),

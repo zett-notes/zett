@@ -1,13 +1,5 @@
-declare module "micromark-util-types" {
-  interface TokenTypeMap {
-    tag: "tag"
-    tagMarker: "tagMarker"
-    tagName: "tagName"
-  }
-}
-
 import { Root } from "mdast"
-import { Extension as FromMarkdownExtension, Token } from "mdast-util-from-markdown"
+import { Extension as FromMarkdownExtension } from "mdast-util-from-markdown"
 import { codes } from "micromark-util-symbol/codes"
 import {
   Code,
@@ -17,32 +9,36 @@ import {
   Previous,
   State,
   Tokenizer,
-  TokenType,
 } from "micromark-util-types"
 import { Plugin } from "unified"
-import { Node } from "unist" // Removed import { VFile } from "vfile"
-// Removed unused interface Options
+import { Node } from "unist"
+
+const types = {
+  tag: "tag",
+  tagMarker: "tagMarker",
+  tagName: "tagName",
+}
 
 /** Syntax extension (text -> tokens) */
 export function tag(): Extension {
   const tokenize: Tokenizer = (effects, ok, nok) => {
     return enter
 
-    function enter(code: Code): State | undefined {
+    function enter(code: Code): State | void {
       if (isMarkerChar(code)) {
-        effects.enter("tag" as TokenType)
-        effects.enter("tagMarker" as TokenType)
+        effects.enter(types.tag)
+        effects.enter(types.tagMarker)
         effects.consume(code)
-        effects.exit("tagMarker" as TokenType)
+        effects.exit(types.tagMarker)
         return enterName
       } else {
         return nok(code)
       }
     }
 
-    function enterName(code: Code): State | undefined {
+    function enterName(code: Code): State | void {
       if (isAlphaChar(code)) {
-        effects.enter("tagName" as TokenType)
+        effects.enter(types.tagName)
         effects.consume(code)
         return continueName
       } else {
@@ -50,13 +46,13 @@ export function tag(): Extension {
       }
     }
 
-    function continueName(code: Code): State | undefined {
+    function continueName(code: Code): State | void {
       if (isNameChar(code)) {
         effects.consume(code)
         return continueName
       } else {
-        effects.exit("tagName" as TokenType)
-        effects.exit("tag" as TokenType)
+        effects.exit(types.tagName)
+        effects.exit(types.tag)
         return ok(code)
       }
     }
@@ -90,29 +86,29 @@ function isMarkerChar(code: Code): boolean {
   return code === codes.numberSign
 }
 
-/** Returns true if character is in the English or extended alphabets (to allow certain unicode letters) */
+/** Returns true if character is in the English alphabet */
 function isAlphaChar(code: Code): boolean {
   if (code === null) return false
   return (
-    (code >= codes.lowercaseA && code <= codes.lowercaseZ) ||
-    (code >= codes.uppercaseA && code <= codes.uppercaseZ) ||
-    (code >= 0x00c0 && code <= 0x00d6) ||
-    (code >= 0x00d8 && code <= 0x00f6) ||
-    (code >= 0x00f8 && code <= 0x00ff) ||
-    (code >= 0x0100 && code <= 0x017f) ||
-    (code >= 0x0180 && code <= 0x024f) ||
-    (code >= 0x0370 && code <= 0x03ff) ||
-    (code >= 0x0400 && code <= 0x04ff) ||
-    (code >= 0x0530 && code <= 0x058f) ||
-    (code >= 0x0590 && code <= 0x05ff) ||
-    (code >= 0x0600 && code <= 0x06ff) ||
-    (code >= 0x0900 && code <= 0x097f) ||
-    (code >= 0x4e00 && code <= 0x9fff) ||
-    (code >= 0xac00 && code <= 0xd7af)
+    (code >= codes.lowercaseA && code <= codes.lowercaseZ) || // a-z
+    (code >= codes.uppercaseA && code <= codes.uppercaseZ) || // A-Z
+    (code >= 0x00c0 && code <= 0x00d6) || // Latin-1 Supplement (À-Ö)
+    (code >= 0x00d8 && code <= 0x00f6) || // Latin-1 Supplement (Ø-ö)
+    (code >= 0x00f8 && code <= 0x00ff) || // Latin-1 Supplement (ø-ÿ)
+    (code >= 0x0100 && code <= 0x017f) || // Latin Extended-A
+    (code >= 0x0180 && code <= 0x024f) || // Latin Extended-B
+    (code >= 0x0370 && code <= 0x03ff) || // Greek and Coptic
+    (code >= 0x0400 && code <= 0x04ff) || // Cyrillic
+    (code >= 0x0530 && code <= 0x058f) || // Armenian
+    (code >= 0x0590 && code <= 0x05ff) || // Hebrew
+    (code >= 0x0600 && code <= 0x06ff) || // Arabic
+    (code >= 0x0900 && code <= 0x097f) || // Devanagari
+    (code >= 0x4e00 && code <= 0x9fff) || // CJK Unified Ideographs
+    (code >= 0xac00 && code <= 0xd7af) // Hangul Syllables
   )
 }
 
-/** Returns true if character is a numeric digit */
+/** Returns true if character is a number  */
 function isNumberChar(code: Code): boolean {
   if (code === null) return false
   return code >= codes.digit0 && code <= codes.digit9
@@ -137,7 +133,7 @@ function isNameChar(code: Code): boolean {
 export function tagHtml(): HtmlExtension {
   return {
     enter: {
-      tagName(token: Token) {
+      [types.tagName](token) {
         const name = this.sliceSerialize(token)
         this.tag(`<tag name="${name}" />`)
       },
@@ -160,25 +156,30 @@ declare module "mdast" {
 
 /** MDAST extension (tokens -> MDAST) */
 export function tagFromMarkdown(): FromMarkdownExtension {
+  // Initialize state
   let name: string | undefined
 
   return {
     enter: {
-      tag(token: Token) {
-        const node = { type: "tag", value: "", data: { name: "" } } as Tag
-        // @ts-ignore - we know this is safe because we've defined the Tag type
-        this.enter(node, token)
+      [types.tag](token) {
+        this.enter({ type: "tag", value: "", data: { name: "" } }, token)
       },
-      tagName(token: Token) {
+      [types.tagName](token) {
         name = this.sliceSerialize(token)
       },
     },
     exit: {
-      tag(token: Token) {
-        const node = this.stack[this.stack.length - 1] as unknown as Tag
-        node.data.name = name || ""
-        node.value = `#${name}`
+      [types.tag](token) {
+        const node = this.stack[this.stack.length - 1]
+
+        if (node.type === "tag") {
+          node.data.name = name || ""
+          node.value = `#${name}`
+        }
+
         this.exit(token)
+
+        // Reset state
         name = undefined
       },
     },
@@ -187,10 +188,10 @@ export function tagFromMarkdown(): FromMarkdownExtension {
 
 /**
  * Remark plugin
- * Safely add micromark and fromMarkdown extensions to this.data().
+ * Reference: https://github.com/remarkjs/remark-gfm/blob/main/index.js
  */
 export function remarkTag(): ReturnType<Plugin<[], Root>> {
-  // @ts-ignore - we know this will be bound to the processor instance
+  // @ts-ignore I'm not sure how to type `this`
   const data = this.data()
 
   add("micromarkExtensions", tag())

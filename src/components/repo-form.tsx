@@ -30,7 +30,7 @@ export function RepoForm({ className, onSubmit, onCancel }: RepoFormProps) {
 
       // Create repo from template
       const response = await fetch(
-        `https://api.github.com/repos/screenfluent/notes-template/generate`,
+        `https://api.github.com/repos/lumen-notes/notes-template/generate`,
         {
           method: "POST",
           headers: {

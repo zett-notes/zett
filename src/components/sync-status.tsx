@@ -5,7 +5,7 @@ import { globalStateMachineAtom, isRepoClonedAtom } from "../global-state"
 import { cx } from "../utils/cx"
 import { CheckFillIcon16, ErrorFillIcon16, LoadingFillIcon16 } from "./icons"
 
-//  Types
+// Types
 export type SyncStatusText = string | JSX.Element | null
 
 // Atoms

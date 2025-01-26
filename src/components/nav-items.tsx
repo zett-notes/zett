@@ -20,7 +20,8 @@ import {
   TagIcon16,
 } from "./icons"
 import { NoteFavicon } from "./note-favicon"
-import { SyncStatusIcon, useSyncStatusText } from "./sync-status"
+import { SyncStatusIcon } from "./sync-status"
+import useSyncStatusText from "./sync-status"
 import { useNetworkState } from "react-use"
 
 const hasDailyNoteAtom = selectAtom(notesAtom, (notes) => notes.has(toDateString(new Date())))

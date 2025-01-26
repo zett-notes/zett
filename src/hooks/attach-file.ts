@@ -1,7 +1,7 @@
 import { EditorView } from "@codemirror/view"
 import { useAtomCallback } from "jotai/utils"
 import React from "react"
-import { fileCache } from "../components/file-preview"
+import { getFileCache } from "../components/file-preview"
 import { githubRepoAtom, githubUserAtom } from "../global-state"
 import { fs, writeFile } from "../utils/fs"
 import { REPO_DIR, gitAdd, gitCommit } from "../utils/git"
@@ -56,7 +56,7 @@ export function useAttachFile() {
           })
 
         // Cache file
-        fileCache.set(path, { file, url: URL.createObjectURL(file) })
+        getFileCache().set(path, { file, url: URL.createObjectURL(file) })
 
         // Get current selection
         const { selection } = view.state

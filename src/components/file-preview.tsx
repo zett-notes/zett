@@ -12,15 +12,18 @@ export type FilePreviewProps = {
   className?: string
 }
 
-// Constants
-const fileCache = new Map<string, { file: File; url: string }>()
-export { fileCache }
+// Cache
+const _fileCache = new Map<string, { file: File; url: string }>()
+
+export function getFileCache() {
+  return _fileCache
+}
 
 // Component
-export default function FilePreview({ path, className }: FilePreviewProps) {
+export function FilePreview({ path, className }: FilePreviewProps) {
   const githubUser = useAtomValue(githubUserAtom)
   const githubRepo = useAtomValue(githubRepoAtom)
-  const cachedFile = fileCache.get(path)
+  const cachedFile = _fileCache.get(path)
   const [file, setFile] = React.useState<File | null>(cachedFile?.file ?? null)
   const [url, setUrl] = React.useState(cachedFile?.url ?? "")
   const [isLoading, setIsLoading] = React.useState(!cachedFile)
@@ -43,7 +46,7 @@ export default function FilePreview({ path, className }: FilePreviewProps) {
         setUrl(url)
 
         // Cache the file and its URL
-        fileCache.set(path, { file, url })
+        _fileCache.set(path, { file, url })
       } catch (error) {
         console.error(error)
       } finally {
@@ -73,37 +76,27 @@ export default function FilePreview({ path, className }: FilePreviewProps) {
     )
   }
 
-  // Image
+  // Return file preview based on file type
   if (file.type.startsWith("image/")) {
-    return <img src={url} alt={path} className={className} />
+    return <img src={url} alt={file.name} className={className} />
   }
 
-  // Video
   if (file.type.startsWith("video/")) {
-    return (
-      // eslint-disable-next-line jsx-a11y/media-has-caption
-      <video controls className={className}>
-        <source src={url} type={file.type} />
-      </video>
-    )
+    return <video src={url} controls className={className} />
   }
 
-  // Audio
   if (file.type.startsWith("audio/")) {
-    // eslint-disable-next-line jsx-a11y/media-has-caption
-    return <audio controls src={url} className={`w-full max-w-lg ${className}`} />
+    return <audio src={url} controls className={className} />
   }
 
-  // PDF (< 3 MB)
-  if (file.type === "application/pdf" && file.size < 3_000_000) {
-    return <iframe title={file.name} src={url} className={`h-full w-full ${className}`} />
+  if (file.type === "application/pdf") {
+    return <iframe src={url} className={className} />
   }
 
   return (
-    <div>
-      <a download={file.name} href={url} className={`link ${className}`}>
-        Download {file.name} ({(file.size / 1_000_000).toFixed(1)} MB)
-      </a>
+    <div className="flex items-center gap-2 leading-4 text-text-secondary">
+      <ErrorIcon16 />
+      Preview not available
     </div>
   )
 }

@@ -65,8 +65,18 @@ export default async (request: Request) => {
       }
     }
 
-    // GitHub requests behave differently if the user-agent starts with "git/"
-    requestHeaders.set("user-agent", "git/lumen/cors-proxy")
+    // Set git-specific headers if this is a git request
+    if (url.includes('git-upload-pack')) {
+      requestHeaders.set('git-protocol', 'version=2')
+      requestHeaders.set('accept', 'application/x-git-upload-pack-result')
+      // Only set user-agent if not already set
+      if (!requestHeaders.has('user-agent')) {
+        requestHeaders.set('user-agent', 'git/lumen/cors-proxy')
+      }
+    } else {
+      // For non-git requests, always set our user-agent
+      requestHeaders.set('user-agent', 'git/lumen/cors-proxy')
+    }
 
     console.log("Filtered headers:", Object.fromEntries(requestHeaders.entries()))
 

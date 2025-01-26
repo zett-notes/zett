@@ -4,7 +4,8 @@
 
 [build.environment]
   NODE_VERSION = "20.11.0"
-  VITE_CORS_PROXY = "https://numen.netlify.app/cors-proxy"
+  # Use Netlify's URL environment variable to make it environment-agnostic
+  VITE_CORS_PROXY = "${URL}/cors-proxy"
 
 [[edge_functions]]
   path = "/github-auth"

@@ -22,7 +22,7 @@ type GitAuth = {
 // Add custom HTTP handler through proxy
 const httpProxy: HttpClient = {
   request: async ({ url, method, headers, body }) => {
-    const proxyUrl = `${import.meta.env.VITE_CORS_PROXY}/${url.replace(/^https?:\/\//, '')}`
+    const proxyUrl = `${import.meta.env.VITE_CORS_PROXY}/${url}`
     return http.request({
       url: proxyUrl,
       method,
@@ -34,7 +34,7 @@ const httpProxy: HttpClient = {
 
 function getAuthHeaders(user: GitHubUser, url: string): GitAuth {
   // Get the proxy URL that will be used
-  const proxyUrl = `${import.meta.env.VITE_CORS_PROXY}/${url.replace(/^https?:\/\//, '')}`
+  const proxyUrl = `${import.meta.env.VITE_CORS_PROXY}/${url}`
 
   // For git-upload-pack, use Basic auth with username and token
   if (proxyUrl.includes('git-upload-pack')) {

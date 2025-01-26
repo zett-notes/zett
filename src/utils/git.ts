@@ -12,8 +12,9 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     fs,
     http,
     dir: REPO_DIR,
-    // corsProxy: "https://cors.isomorphic-git.org",
-    corsProxy: "/cors-proxy",
+    corsProxy: import.meta.env.DEV 
+      ? "https://cors.isomorphic-git.org"  // Use public proxy in dev
+      : "/cors-proxy",  // Use Netlify proxy in production
     url: `https://github.com/${repo.owner}/${repo.name}`,
     ref: DEFAULT_BRANCH,
     singleBranch: true,

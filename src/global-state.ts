@@ -541,10 +541,7 @@ export const isSignedOutAtom = selectAtom(globalStateMachineAtom, (state) =>
 // GitHub
 // -----------------------------------------------------------------------------
 
-export const githubUserAtom = selectAtom(
-  globalStateMachineAtom,
-  (state) => state.context.githubUser,
-)
+export const githubUserAtom = atomWithStorage<GitHubUser | null>(GITHUB_USER_KEY, null)
 
 export const githubRepoAtom = selectAtom(
   globalStateMachineAtom,

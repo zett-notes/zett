@@ -33,8 +33,11 @@ const httpProxy: HttpClient = {
 }
 
 function getAuthHeaders(user: GitHubUser, url: string): GitAuth {
+  // Get the proxy URL that will be used
+  const proxyUrl = `${import.meta.env.VITE_CORS_PROXY}/${url.replace(/^https?:\/\//, '')}`
+
   // For git-upload-pack, use Basic auth with username and token
-  if (url.includes('git-upload-pack')) {
+  if (proxyUrl.includes('git-upload-pack')) {
     const base64Credentials = btoa(`${user.name}:${user.token}`)
     return {
       headers: {

@@ -19,7 +19,7 @@ import {
   Tokenizer,
   TokenType,
 } from "micromark-util-types"
-import { Plugin, Processor } from "unified"
+import { Plugin } from "unified"
 import { Node } from "unist" // Removed import { VFile } from "vfile"
 // Removed unused interface Options
 
@@ -187,18 +187,17 @@ export function tagFromMarkdown(): FromMarkdownExtension {
 
 /**
  * Remark plugin
- * Safely add micromark and fromMarkdown extensions to `this.data()`.
+ * Safely add micromark and fromMarkdown extensions to this.data().
  */
-export function remarkTag(): Plugin<[], Root> {
-  return function attacher(this: Processor) {
-    const data = this.data() as Record<string, unknown[] | undefined>
+export function remarkTag(): ReturnType<Plugin<[], Root>> {
+  // @ts-ignore - we know this will be bound to the processor instance
+  const data = this.data()
 
-    add("micromarkExtensions", tag())
-    add("fromMarkdownExtensions", tagFromMarkdown())
+  add("micromarkExtensions", tag())
+  add("fromMarkdownExtensions", tagFromMarkdown())
 
-    function add(field: string, value: unknown) {
-      if (!data[field]) data[field] = []
-      data[field]!.push(value)
-    }
+  function add(field: string, value: unknown) {
+    const list = data[field] ? data[field] : (data[field] = [])
+    list.push(value)
   }
 }

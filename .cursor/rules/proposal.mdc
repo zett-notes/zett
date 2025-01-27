@@ -1,0 +1,143 @@
+---
+description: Guidelines for creating feature proposals and improvement suggestions in the Zett project. This rule helps maintain consistent and well-documented proposals that are easy to review and implement.
+globs: docs/proposals/*
+---
+
+# Feature Proposal Rules
+
+## Core Principles
+- One proposal per feature/improvement
+- Focus on solving real problems
+- Include implementation details
+- Consider edge cases and testing
+- Reference existing code and documentation
+
+## File Structure
+```
+docs/proposals/
+└── feature-name.md
+```
+
+## Required Sections
+
+### 1. Title and Summary
+```markdown
+# [Feature Name]
+
+## Problem
+Describe the current issue or limitation. Include:
+- User impact
+- Technical limitations
+- Business implications
+```
+
+### 2. Solution
+```markdown
+## Solution
+Explain the proposed solution:
+- High-level approach
+- Technical architecture
+- User experience changes
+```
+
+### 3. Implementation Details
+
+#### New Files
+```markdown
+### Implementation Details
+
+#### New Files
+\`path/to/new/file.tsx\`:
+```typescript
+// Show exact code to be added
+```
+```
+
+#### Modified Files
+```markdown
+#### Modified Files
+\`path/to/modified/file.tsx\`:
+```typescript
+// Show exact changes needed
+```
+```
+
+### 4. Testing Plan
+```markdown
+### Testing
+1. Test scenario name:
+   - Exact steps to test
+   - Expected results
+   - Estimated time
+```
+
+### 5. References
+```markdown
+### References
+1. [Link Description](url)
+2. Related code: \`path/to/file.tsx\`
+```
+
+## Best Practices
+
+### Code Examples
+1. Use TypeScript/React for code snippets
+2. Include imports and dependencies
+3. Show full component/function implementations
+4. Use proper formatting and comments
+
+### Testing Instructions
+1. Break down into small, verifiable steps
+2. Include setup requirements
+3. List expected outcomes
+4. Estimate testing time
+5. Consider edge cases
+
+### Documentation
+1. Use clear, technical language
+2. Include links to relevant docs/code
+3. Explain architectural decisions
+4. Document potential risks
+
+## Example Proposal Structure
+```markdown
+# Feature Name
+
+## Problem
+Current limitation and its impact...
+
+## Solution
+Proposed approach and benefits...
+
+### Implementation Details
+
+#### New Files
+\`src/components/new-feature.tsx\`:
+```typescript
+import React from "react"
+// Full implementation...
+```
+
+#### Modified Files
+\`src/routes/root.tsx\`:
+```typescript
+// Show exact changes...
+```
+
+### Testing
+1. Basic functionality:
+   - Steps...
+   - Expected: ...
+   - Time: ~Xmin
+
+### References
+1. [Documentation](url)
+2. Related: \`src/existing-file.tsx\`
+```
+
+## Tips
+1. Keep proposals focused on one feature
+2. Include all necessary code changes
+3. Make testing steps clear and specific
+4. Reference existing patterns and code
+5. Consider performance and security implications

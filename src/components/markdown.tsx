@@ -6,9 +6,6 @@ import { useAtomValue } from "jotai"
 import { selectAtom } from "jotai/utils"
 import React, { useMemo } from "react"
 import ReactMarkdown from "react-markdown"
-import { CodeProps, LiProps, Position } from "react-markdown/lib/ast-to-react"
-import { useNetworkState } from "react-use"
-import rehypeKatex from "rehype-katex"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
 import { z } from "zod"
@@ -54,6 +51,11 @@ import { SyntaxHighlighter, TemplateSyntaxHighlighter } from "./syntax-highlight
 import { TagLink } from "./tag-link"
 import { Tooltip } from "./tooltip"
 import { WebsiteFavicon } from "./website-favicon"
+import type { Code, ListItem } from "mdast"
+import type { Position } from "unist"
+import type { LiHTMLAttributes, HTMLAttributes } from "react"
+import type { Element } from "hast"
+import { useNetworkState } from "react-use"
 
 export type MarkdownProps = {
   children: string
@@ -174,32 +176,39 @@ function MarkdownContent({ children, className }: { children: string; className?
         remarkTag,
         [remarkMath, { singleDollarTextMath: false }],
       ]}
-      rehypePlugins={[rehypeKatex]}
       remarkRehypeOptions={{
         handlers: {
-          // TODO: Improve type-safety of `node`
-          rehypeKatex(h, node) {
-            return h(node, "math", {
-              output: "mathml",
-            })
+          wikilink(state, node): Element {
+            return {
+              type: 'element',
+              tagName: 'a',
+              properties: {
+                href: `/${node.value}`,
+                className: 'wikilink'
+              },
+              children: [{ type: 'text', value: node.value }]
+            }
           },
-          wikilink(h, node) {
-            return h(node, "wikilink", {
-              id: node.data.id,
-              text: node.data.text,
-            })
+          embed(state, node): Element {
+            return {
+              type: 'element',
+              tagName: 'div',
+              properties: {
+                className: 'embed'
+              },
+              children: [{ type: 'text', value: node.value }]
+            }
           },
-          embed(h, node) {
-            return h(node, "embed", {
-              id: node.data.id,
-              text: node.data.text,
-            })
-          },
-          tag(h, node) {
-            return h(node, "tag", {
-              name: node.data.name,
-            })
-          },
+          tag(state, node): Element {
+            return {
+              type: 'element',
+              tagName: 'span',
+              properties: {
+                className: 'tag'
+              },
+              children: [{ type: 'text', value: node.value }]
+            }
+          }
         },
       }}
       components={{
@@ -629,13 +638,19 @@ function Image(props: React.ComponentPropsWithoutRef<"img">) {
   return <img {...props} />
 }
 
-function Code({ className, inline, children }: CodeProps) {
+type CodeProps = HTMLAttributes<HTMLElement> & {
+  inline?: boolean
+  className?: string
+  children?: React.ReactNode
+}
+
+function Code({ className, inline, children, ...props }: CodeProps) {
   if (className?.includes("language-math")) {
     return <div>{children}</div>
   }
 
   if (inline) {
-    return <code className={className}>{children}</code>
+    return <code className={className} {...props}>{children}</code>
   }
 
   const language = className?.replace("language-", "")
@@ -649,7 +664,7 @@ function Code({ className, inline, children }: CodeProps) {
     <div className="relative">
       <pre className="!pe-12">
         <div className="absolute end-2 top-2 rounded bg-bg-code-block coarse:end-1 coarse:top-1">
-          <CopyButton text={children.toString()} />
+          <CopyButton text={children?.toString() ?? ""} />
         </div>
         <SyntaxHighlighter language={language}>{children}</SyntaxHighlighter>
       </pre>
@@ -657,23 +672,27 @@ function Code({ className, inline, children }: CodeProps) {
   )
 }
 
+type ListItemProps = LiHTMLAttributes<HTMLLIElement> & {
+  position?: Position
+}
+
 const TaskListItemContext = React.createContext<{
   position?: Position
 } | null>(null)
 
-function ListItem({ node, ordered, index, ...props }: LiProps) {
-  const isTaskListItem = props.className?.includes("task-list-item")
+function ListItem({ className, children, position, ...props }: ListItemProps) {
+  const isTaskListItem = className?.includes("task-list-item")
 
   if (isTaskListItem) {
     return (
       // eslint-disable-next-line react/jsx-no-constructed-context-values
-      <TaskListItemContext.Provider value={{ position: node.position }}>
-        <li {...props} />
+      <TaskListItemContext.Provider value={{ position }}>
+        <li {...props}>{children}</li>
       </TaskListItemContext.Provider>
     )
   }
 
-  return <li {...props} />
+  return <li {...props}>{children}</li>
 }
 
 function CheckboxInput({ checked }: { checked?: boolean }) {

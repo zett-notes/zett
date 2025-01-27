@@ -1,7 +1,7 @@
 import memoize from "fast-memoize"
 import { fromMarkdown } from "mdast-util-from-markdown"
 import type { Node } from "unist"
-import type { Root, Heading, Link, ListItem, Parent } from "mdast"
+import type { Heading, ListItem } from "mdast"
 import { gfmTaskListItemFromMarkdown } from "mdast-util-gfm-task-list-item"
 import { toString } from "mdast-util-to-string"
 import { gfmTaskListItem } from "micromark-extension-gfm-task-list-item"
@@ -49,7 +49,13 @@ export const parseNote = memoize((id: NoteId, content: string): Note => {
 
   const { frontmatter, content: contentWithoutFrontmatter } = parseFrontmatter(content)
 
-  function visitNode(node: Node & { data?: { id?: string, name?: string }, checked?: boolean }) {
+  function visitNode(node: Node & { 
+    data?: { 
+      id?: string
+      name?: string 
+    }
+    checked?: boolean | null 
+  }) {
     switch (node.type) {
       case "heading": {
         // Only use the first heading
@@ -92,7 +98,7 @@ export const parseNote = memoize((id: NoteId, content: string): Note => {
 
       case "listItem": {
         if (!isListItem(node)) return
-        if (typeof node.checked === "boolean") {
+        if (node.checked !== null && node.checked !== undefined) {
           tasks.push({
             completed: node.checked === true,
             text: toString(node),

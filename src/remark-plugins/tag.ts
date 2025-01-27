@@ -1,6 +1,6 @@
 import { Root, Literal } from "mdast"
 import { Extension as FromMarkdownExtension } from "mdast-util-from-markdown"
-import { codes } from "micromark-util-symbol/codes"
+import { codes } from "micromark-util-symbol"
 import {
   Code,
   Construct,
@@ -53,7 +53,7 @@ export function tag(): Extension {
   const tokenize: Tokenizer = (effects, ok, nok) => {
     return enter
 
-    function enter(code: Code): State | void {
+    function enter(code: Code): State | undefined {
       if (isMarkerChar(code)) {
         effects.enter(types.tag)
         effects.enter(types.tagMarker)
@@ -65,7 +65,7 @@ export function tag(): Extension {
       }
     }
 
-    function enterName(code: Code): State | void {
+    function enterName(code: Code): State | undefined {
       if (isAlphaChar(code)) {
         effects.enter(types.tagName)
         effects.consume(code)
@@ -75,7 +75,7 @@ export function tag(): Extension {
       }
     }
 
-    function continueName(code: Code): State | void {
+    function continueName(code: Code): State | undefined {
       if (isNameChar(code)) {
         effects.consume(code)
         return continueName

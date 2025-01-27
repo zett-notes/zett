@@ -1,10 +1,10 @@
-import { Root, Literal } from "mdast"
+import { Root, Parent } from "mdast"
 import { Extension as FromMarkdownExtension } from "mdast-util-from-markdown"
-import { codes } from "micromark-util-symbol/codes"
+import { codes } from "micromark-util-symbol"
 import { Code, Construct, Extension, HtmlExtension, State, Tokenizer } from "micromark-util-types"
 import { Plugin } from "unified"
 
-interface Wikilink extends Literal {
+interface Wikilink extends Parent {
   type: "wikilink"
   value: string
   data: { id: string; text: string }
@@ -42,7 +42,7 @@ export function wikilink(): Extension {
   const tokenize: Tokenizer = (effects, ok, nok) => {
     return enter
 
-    function enter(code: Code): State | void {
+    function enter(code: Code): State | undefined {
       if (isOpeningMarkerChar(code)) {
         effects.enter(types.wikilink)
         effects.enter(types.wikilinkMarker)
@@ -53,18 +53,17 @@ export function wikilink(): Extension {
       }
     }
 
-    function exitOpeningMarker(code: Code): State | void {
+    function exitOpeningMarker(code: Code): State | undefined {
       if (isOpeningMarkerChar(code)) {
         effects.consume(code)
         effects.exit(types.wikilinkMarker)
-
         return enterId
       } else {
         return nok(code)
       }
     }
 
-    function enterId(code: Code): State | void {
+    function enterId(code: Code): State | undefined {
       if (isFilenameChar(code)) {
         effects.enter(types.wikilinkId)
         effects.consume(code)
@@ -74,7 +73,7 @@ export function wikilink(): Extension {
       }
     }
 
-    function continueId(code: Code): State | void {
+    function continueId(code: Code): State | undefined {
       if (isSeparatorChar(code)) {
         effects.exit(types.wikilinkId)
         effects.enter(types.wikilinkSeparator)
@@ -94,7 +93,7 @@ export function wikilink(): Extension {
       }
     }
 
-    function enterText(code: Code): State | void {
+    function enterText(code: Code): State | undefined {
       if (isTextChar(code)) {
         effects.enter(types.wikilinkText)
         effects.consume(code)
@@ -104,7 +103,7 @@ export function wikilink(): Extension {
       }
     }
 
-    function continueText(code: Code): State | void {
+    function continueText(code: Code): State | undefined {
       if (isTextChar(code)) {
         effects.consume(code)
         return continueText
@@ -118,7 +117,7 @@ export function wikilink(): Extension {
       }
     }
 
-    function exitClosingMarker(code: Code): State | void {
+    function exitClosingMarker(code: Code): State | undefined {
       if (isClosingMarkerChar(code)) {
         effects.consume(code)
         effects.exit(types.wikilinkMarker)
@@ -129,6 +128,7 @@ export function wikilink(): Extension {
       }
     }
   }
+
   const construct: Construct = {
     name: "wikilink",
     tokenize,
@@ -234,7 +234,15 @@ export function wikilinkFromMarkdown(): FromMarkdownExtension {
   return {
     enter: {
       [types.wikilink](token) {
-        this.enter({ type: "wikilink", value: "", data: { id: "", text: "" } }, token)
+        this.enter(
+          {
+            type: "wikilink",
+            value: "",
+            data: { id: "", text: "" },
+            children: [],
+          },
+          token,
+        )
       },
       [types.wikilinkId](token) {
         id = this.sliceSerialize(token)

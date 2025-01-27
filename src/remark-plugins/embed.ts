@@ -2,7 +2,7 @@
 
 import { Root, Literal } from "mdast"
 import { Extension as FromMarkdownExtension } from "mdast-util-from-markdown"
-import { codes } from "micromark-util-symbol/codes"
+import { codes } from "micromark-util-symbol"
 import { Code, Construct, Extension, HtmlExtension, State, Tokenizer } from "micromark-util-types"
 import { Plugin } from "unified"
 
@@ -51,7 +51,7 @@ export function embed(): Extension {
   const tokenize: Tokenizer = (effects, ok, nok) => {
     return enter
 
-    function enter(code: Code): State | void {
+    function enter(code: Code): State | undefined {
       if (isExclamationMarkChar(code)) {
         effects.enter(types.embed)
         effects.enter(types.embedMarker)
@@ -62,7 +62,7 @@ export function embed(): Extension {
       }
     }
 
-    function enterOpeningMarker(code: Code): State | void {
+    function enterOpeningMarker(code: Code): State | undefined {
       if (isOpeningMarkerChar(code)) {
         effects.consume(code)
         return exitOpeningMarker
@@ -71,7 +71,7 @@ export function embed(): Extension {
       }
     }
 
-    function exitOpeningMarker(code: Code): State | void {
+    function exitOpeningMarker(code: Code): State | undefined {
       if (isOpeningMarkerChar(code)) {
         effects.consume(code)
         effects.exit(types.embedMarker)
@@ -82,7 +82,7 @@ export function embed(): Extension {
       }
     }
 
-    function enterId(code: Code): State | void {
+    function enterId(code: Code): State | undefined {
       if (isFilenameChar(code)) {
         effects.enter(types.embedId)
         effects.consume(code)
@@ -92,7 +92,7 @@ export function embed(): Extension {
       }
     }
 
-    function continueId(code: Code): State | void {
+    function continueId(code: Code): State | undefined {
       if (isSeparatorChar(code)) {
         effects.exit(types.embedId)
         effects.enter(types.embedSeparator)
@@ -112,7 +112,7 @@ export function embed(): Extension {
       }
     }
 
-    function enterText(code: Code): State | void {
+    function enterText(code: Code): State | undefined {
       if (isTextChar(code)) {
         effects.enter(types.embedText)
         effects.consume(code)
@@ -122,7 +122,7 @@ export function embed(): Extension {
       }
     }
 
-    function continueText(code: Code): State | void {
+    function continueText(code: Code): State | undefined {
       if (isTextChar(code)) {
         effects.consume(code)
         return continueText
@@ -136,7 +136,7 @@ export function embed(): Extension {
       }
     }
 
-    function exitClosingMarker(code: Code): State | void {
+    function exitClosingMarker(code: Code): State | undefined {
       if (isClosingMarkerChar(code)) {
         effects.consume(code)
         effects.exit(types.embedMarker)

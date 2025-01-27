@@ -143,7 +143,6 @@
     "benchmark": "^2.1.4",
     "c8": "^10.1.2",
     "concurrently": "^8.2.2",
-    "cross-env": "^7.0.3",
     "eslint": "^8.54.0",
     "eslint-plugin-jsx-a11y": "^6.6.1",
     "eslint-plugin-react": "^7.34.1",

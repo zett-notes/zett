@@ -1,8 +1,10 @@
 import { useSetAtom } from "jotai"
-import { githubUserAtom } from "../global-state"
+import { globalStateMachineAtom } from "../global-state"
 
 // Export hook as a function (Vite 6 best practice)
 export function useSignOut() {
-  const setGithubUser = useSetAtom(githubUserAtom)
-  return () => setGithubUser(null)
-} 
+  const send = useSetAtom(globalStateMachineAtom)
+  return () => {
+    send({ type: "SIGN_OUT" })
+  }
+}

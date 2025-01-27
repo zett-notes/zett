@@ -7,7 +7,6 @@
     "dev": "vite dev --host",
     "dev:netlify": "netlify dev",
     "dev:storybook": "storybook dev -p 6006",
-    "dev:all": "netlify dev",
     "build": "tsc && vite build",
     "build:storybook": "storybook build",
     "preview": "vite preview",

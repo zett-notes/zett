@@ -7,7 +7,13 @@ import { Markdown } from "./markdown"
 
 const NUM_VISIBLE_TAGS = 4
 
-export function NotePreview({ note, className }: { note: Note; className?: string }) {
+type NotePreviewProps = {
+  note: Note
+  className?: string
+  inert?: string
+}
+
+export function NotePreview({ note, className, inert }: NotePreviewProps) {
   const highlightedHrefs = useLinkHighlight()
 
   const frontmatterTags = useMemo(() => {
@@ -36,11 +42,8 @@ export function NotePreview({ note, className }: { note: Note; className?: strin
 
   return (
     <div
-      {...{ inert: "" }}
-      className={cx(
-        "flex aspect-[5/3] w-full flex-col gap-1.5 overflow-hidden p-3 [contain:layout_paint]",
-        className,
-      )}
+      className={cx("relative flex flex-col gap-4 p-4", className)}
+      inert={inert === "true"}
     >
       {(note.type === "daily" || note.type === "weekly") && !note.title ? (
         <div className={cx("mb-1 flex items-baseline gap-2.5 font-content")}>

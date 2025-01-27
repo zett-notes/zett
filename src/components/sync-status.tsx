@@ -1,3 +1,4 @@
+import React, { ReactElement } from "react"
 import { useAtomValue } from "jotai"
 import { selectAtom } from "jotai/utils"
 import { useNetworkState } from "react-use"
@@ -6,7 +7,7 @@ import { cx } from "../utils/cx"
 import { CheckFillIcon16, ErrorFillIcon16, LoadingFillIcon16 } from "./icons"
 
 // Types
-export type SyncStatusText = string | JSX.Element | null
+export type SyncStatusText = string | ReactElement | null
 
 // Atoms
 const isSyncSuccessAtom = selectAtom(globalStateMachineAtom, (state) =>

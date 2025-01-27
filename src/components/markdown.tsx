@@ -7,9 +7,11 @@ import { selectAtom } from "jotai/utils"
 import React, { useMemo } from "react"
 import type { HTMLAttributes } from "react"
 import ReactMarkdown from "react-markdown"
+import type { ExtraProps } from 'react-markdown'
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
 import { z } from "zod"
+import type { Position } from "unist"
 import { notesAtom } from "../global-state"
 import { UPLOADS_DIR } from "../hooks/attach-file"
 import { useNoteById } from "../hooks/note"
@@ -52,15 +54,13 @@ import { SyntaxHighlighter, TemplateSyntaxHighlighter } from "./syntax-highlight
 import { TagLink } from "./tag-link"
 import { Tooltip } from "./tooltip"
 import { WebsiteFavicon } from "./website-favicon"
-import type { Position } from "unist"
-import type { Element } from "hast"
 import { useNetworkState } from "react-use"
+import rehypeKatex from "rehype-katex"
 
-type ListItemProps = React.ComponentProps<'li'> & {
-  node?: {
-    position?: Position
-    checked?: boolean
-  }
+// Used by remark-rehype handlers
+type ListItemProps = React.ComponentProps<'li'> & ExtraProps & {
+  ordered?: boolean
+  index?: number
 }
 
 export type MarkdownProps = {
@@ -171,6 +171,20 @@ function isObjectEmpty(obj: Record<string, unknown>) {
 }
 
 function MarkdownContent({ children, className }: { children: string; className?: string }) {
+  const components = {
+    a: Anchor,
+    img: Image,
+    input: CheckboxInput,
+    li: ListItem,
+    // Delegate rendering of the <pre> element to the Code component
+    pre: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    code: Code,
+    // Custom components with proper types
+    wikilink: NoteLink as React.ComponentType<{ id: string; text: string }>,
+    embed: NoteEmbed as React.ComponentType<{ id: string; text: string }>,
+    tag: TagLink as React.ComponentType<{ name: string }>,
+  }
+
   return (
     <ReactMarkdown
       className={cx("markdown", className)}
@@ -182,85 +196,46 @@ function MarkdownContent({ children, className }: { children: string; className?
         remarkTag,
         [remarkMath, { singleDollarTextMath: false }],
       ]}
+      rehypePlugins={[rehypeKatex]}
       remarkRehypeOptions={{
         handlers: {
-          wikilink(state, node): Element {
+          wikilink(state, node) {
             return {
               type: 'element',
-              tagName: 'a',
+              tagName: 'wikilink',
               properties: {
-                href: `/${node.value}`,
-                className: 'wikilink'
+                id: node.data.id,
+                text: node.data.text,
               },
-              children: [{ type: 'text', value: node.value }]
+              children: []
             }
           },
-          embed(state, node): Element {
+          embed(state, node) {
             return {
               type: 'element',
-              tagName: 'div',
+              tagName: 'embed',
               properties: {
-                className: 'embed'
+                id: node.data.id,
+                text: node.data.text,
               },
-              children: [{ type: 'text', value: node.value }]
+              children: []
             }
           },
-          tag(state, node): Element {
+          tag(state, node) {
             return {
               type: 'element',
-              tagName: 'span',
+              tagName: 'tag',
               properties: {
-                className: 'tag'
+                name: node.data.name,
               },
-              children: [{ type: 'text', value: node.value }]
-            }
-          },
-          listItem(state, node): Element {
-            const props: { className?: string } = {}
-            
-            if (node.checked !== null && node.checked !== undefined) {
-              props.className = 'task-list-item'
-            }
-
-            const result = state.all(node)
-
-            if (node.checked !== null && node.checked !== undefined) {
-              result.unshift({
-                type: 'element',
-                tagName: 'input',
-                properties: {
-                  type: 'checkbox',
-                  checked: node.checked,
-                  disabled: true
-                },
-                children: []
-              })
-            }
-
-            return {
-              type: 'element',
-              tagName: 'li',
-              properties: props,
-              children: result
+              children: []
             }
           }
         },
       }}
-      components={{
-        a: Anchor,
-        img: Image,
-        input: CheckboxInput,
-        li: ListItem,
-        // Delegate rendering of the <pre> element to the Code component
-        pre: ({ children }) => <>{children}</>,
-        code: Code,
-        // @ts-ignore I don't know how to extend the list of accepted component keys
-        wikilink: NoteLink,
-        // @ts-ignore
-        embed: NoteEmbed,
-        // @ts-ignore
-        tag: TagLink,
-      }}
+      // @ts-expect-error - react-markdown types don't support custom components (wikilink, embed, tag)
+      // This is a known limitation, and we're using our own types defined above
+      components={components}
     >
       {children}
     </ReactMarkdown>
@@ -711,19 +686,19 @@ const TaskListItemContext = React.createContext<{
   position?: Position
 } | null>(null)
 
-function ListItem({ node, className, children, ...props }: ListItemProps) {
-  const isTaskListItem = className?.includes("task-list-item")
-  const contextValue = React.useMemo(() => ({ position: node?.position }), [node?.position])
+function ListItem({ node, ordered, index, ...props }: ListItemProps) {
+  const isTaskListItem = props.className?.includes("task-list-item")
 
   if (isTaskListItem) {
     return (
-      <TaskListItemContext.Provider value={contextValue}>
-        <li className={className} {...props}>{children}</li>
+      // eslint-disable-next-line react/jsx-no-constructed-context-values
+      <TaskListItemContext.Provider value={{ position: node?.position }}>
+        <li {...props} />
       </TaskListItemContext.Provider>
     )
   }
 
-  return <li className={className} {...props}>{children}</li>
+  return <li {...props} />
 }
 
 function CheckboxInput({ checked }: { checked?: boolean }) {

@@ -5,6 +5,12 @@
 [build.environment]
   NODE_VERSION = "20.11.0"
 
+[dev]
+  command = "npm run dev"
+  targetPort = 5173
+  port = 8888
+  framework = "#custom"
+
 [[edge_functions]]
   path = "/github-auth"
   function = "github-auth"

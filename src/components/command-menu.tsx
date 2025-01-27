@@ -41,7 +41,7 @@ export function CommandMenu() {
   const [isOpen, setIsOpen] = useAtom(isCommandMenuOpenAtom)
 
   // Refs
-  const prevActiveElement = useRef<HTMLElement>()
+  const prevActiveElement = useRef<HTMLElement | null>(null)
 
   // Local state
   const [query, setQuery] = useState("")

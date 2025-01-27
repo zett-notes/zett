@@ -5,6 +5,7 @@ import { isToday } from "date-fns"
 import { useAtomValue } from "jotai"
 import { selectAtom } from "jotai/utils"
 import React, { useMemo } from "react"
+import type { HTMLAttributes } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
@@ -51,11 +52,16 @@ import { SyntaxHighlighter, TemplateSyntaxHighlighter } from "./syntax-highlight
 import { TagLink } from "./tag-link"
 import { Tooltip } from "./tooltip"
 import { WebsiteFavicon } from "./website-favicon"
-import type { Code, ListItem } from "mdast"
 import type { Position } from "unist"
-import type { LiHTMLAttributes, HTMLAttributes } from "react"
 import type { Element } from "hast"
 import { useNetworkState } from "react-use"
+
+type ListItemProps = React.ComponentProps<'li'> & {
+  node?: {
+    position?: Position
+    checked?: boolean
+  }
+}
 
 export type MarkdownProps = {
   children: string
@@ -207,6 +213,35 @@ function MarkdownContent({ children, className }: { children: string; className?
                 className: 'tag'
               },
               children: [{ type: 'text', value: node.value }]
+            }
+          },
+          listItem(state, node): Element {
+            const props: { className?: string } = {}
+            
+            if (node.checked !== null && node.checked !== undefined) {
+              props.className = 'task-list-item'
+            }
+
+            const result = state.all(node)
+
+            if (node.checked !== null && node.checked !== undefined) {
+              result.unshift({
+                type: 'element',
+                tagName: 'input',
+                properties: {
+                  type: 'checkbox',
+                  checked: node.checked,
+                  disabled: true
+                },
+                children: []
+              })
+            }
+
+            return {
+              type: 'element',
+              tagName: 'li',
+              properties: props,
+              children: result
             }
           }
         },
@@ -672,27 +707,23 @@ function Code({ className, inline, children, ...props }: CodeProps) {
   )
 }
 
-type ListItemProps = LiHTMLAttributes<HTMLLIElement> & {
-  position?: Position
-}
-
 const TaskListItemContext = React.createContext<{
   position?: Position
 } | null>(null)
 
-function ListItem({ className, children, position, ...props }: ListItemProps) {
+function ListItem({ node, className, children, ...props }: ListItemProps) {
   const isTaskListItem = className?.includes("task-list-item")
+  const contextValue = React.useMemo(() => ({ position: node?.position }), [node?.position])
 
   if (isTaskListItem) {
     return (
-      // eslint-disable-next-line react/jsx-no-constructed-context-values
-      <TaskListItemContext.Provider value={{ position }}>
-        <li {...props}>{children}</li>
+      <TaskListItemContext.Provider value={contextValue}>
+        <li className={className} {...props}>{children}</li>
       </TaskListItemContext.Provider>
     )
   }
 
-  return <li {...props}>{children}</li>
+  return <li className={className} {...props}>{children}</li>
 }
 
 function CheckboxInput({ checked }: { checked?: boolean }) {

@@ -4,6 +4,11 @@ import { GitHubRepository, GitHubUser } from "../schema"
 import { fs, fsWipe } from "./fs"
 import { startTimer } from "./timer"
 
+// Note: isomorphic-git will first try to access the repo without authentication,
+// which results in a 401 error in the console. This is normal behavior - after getting 401,
+// it will retry with authentication using the provided GitHub token. You can safely ignore
+// these 401 errors as long as the subsequent authenticated requests succeed.
+
 export const REPO_DIR = "/repo"
 const DEFAULT_BRANCH = "main"
 
@@ -48,6 +53,7 @@ export async function gitPull(user: GitHubUser) {
     fs,
     http,
     dir: REPO_DIR,
+    ref: DEFAULT_BRANCH,
     singleBranch: true,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),

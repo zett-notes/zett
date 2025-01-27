@@ -8,21 +8,11 @@ export const REPO_DIR = "/repo"
 const DEFAULT_BRANCH = "main"
 
 export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
-  console.log("Starting git clone with options:", { dir: REPO_DIR, url: `https://github.com/${repo.owner}/${repo.name}`, ref: DEFAULT_BRANCH, user: user.login })
-
-  // Wipe file system
-  console.log("Wiping filesystem...")
-  fsWipe()
-
-  // Clone repo
-  console.log("Starting clone operation...")
-  let stopTimer = startTimer(`git clone https://github.com/${repo.owner}/${repo.name} ${REPO_DIR}`)
-
   const options: Parameters<typeof git.clone>[0] = {
     fs,
     http,
     dir: REPO_DIR,
-    corsProxy: "/cors-proxy", // będzie przekierowane przez Netlify Edge Function w produkcji
+    corsProxy: "/cors-proxy",
     url: `https://github.com/${repo.owner}/${repo.name}`,
     ref: DEFAULT_BRANCH,
     singleBranch: true,
@@ -32,6 +22,13 @@ export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
     onAuth: () => ({ username: user.login, password: user.token }),
   }
 
+  // Wipe file system
+  // TODO: Only remove the repo directory instead of wiping the entire file system
+  // Blocked by https://github.com/isomorphic-git/lightning-fs/issues/71
+  fsWipe()
+
+  // Clone repo
+  let stopTimer = startTimer(`git clone ${options.url} ${options.dir}`)
   await git.clone(options)
   stopTimer()
 
@@ -51,8 +48,6 @@ export async function gitPull(user: GitHubUser) {
     fs,
     http,
     dir: REPO_DIR,
-    corsProxy: "/cors-proxy",
-    remote: "origin",
     singleBranch: true,
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
@@ -69,8 +64,6 @@ export async function gitPush(user: GitHubUser) {
     fs,
     http,
     dir: REPO_DIR,
-    corsProxy: "/cors-proxy",
-    remote: "origin",
     onMessage: (message) => console.debug("onMessage", message),
     onProgress: (progress) => console.debug("onProgress", progress),
     onAuth: () => ({ username: user.login, password: user.token }),

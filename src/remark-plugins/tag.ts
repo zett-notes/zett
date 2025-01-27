@@ -1,4 +1,4 @@
-import { Root } from "mdast"
+import { Root, Literal } from "mdast"
 import { Extension as FromMarkdownExtension } from "mdast-util-from-markdown"
 import { codes } from "micromark-util-symbol/codes"
 import {
@@ -11,12 +11,41 @@ import {
   Tokenizer,
 } from "micromark-util-types"
 import { Plugin } from "unified"
-import { Node } from "unist"
+
+// Register tag as an mdast node type
+interface Tag extends Literal {
+  type: "tag"
+  value: string
+  data: { name: string }
+}
+
+declare module "micromark-util-types" {
+  interface TokenTypeMap {
+    tag: "tag"
+    tagMarker: "tagMarker"
+    tagName: "tagName"
+  }
+}
+
+declare module "mdast-util-from-markdown" {
+  interface Content {
+    tag: Tag
+  }
+}
+
+declare module "mdast" {
+  interface PhrasingContentMap {
+    tag: Tag
+  }
+  interface RootContentMap {
+    tag: Tag
+  }
+}
 
 const types = {
-  tag: "tag",
-  tagMarker: "tagMarker",
-  tagName: "tagName",
+  tag: "tag" as const,
+  tagMarker: "tagMarker" as const,
+  tagName: "tagName" as const,
 }
 
 /** Syntax extension (text -> tokens) */
@@ -135,22 +164,9 @@ export function tagHtml(): HtmlExtension {
     enter: {
       [types.tagName](token) {
         const name = this.sliceSerialize(token)
-        this.tag(`<tag name="${name}" />`)
+        this.tag(`<tag name="${name}" value="${name}" />`)
       },
     },
-  }
-}
-
-// Register tag as an mdast node type
-interface Tag extends Node {
-  type: "tag"
-  value: string
-  data: { name: string }
-}
-
-declare module "mdast" {
-  interface StaticPhrasingContentMap {
-    tag: Tag
   }
 }
 
@@ -174,7 +190,6 @@ export function tagFromMarkdown(): FromMarkdownExtension {
 
         if (node.type === "tag") {
           node.data.name = name || ""
-          node.value = `#${name}`
         }
 
         this.exit(token)

@@ -1,6 +1,7 @@
 import memoize from "fast-memoize"
 import { fromMarkdown } from "mdast-util-from-markdown"
-import { Node } from "mdast-util-from-markdown/lib"
+import type { Node } from "unist"
+import type { Root, Heading, Link, ListItem, Parent } from "mdast"
 import { gfmTaskListItemFromMarkdown } from "mdast-util-gfm-task-list-item"
 import { toString } from "mdast-util-to-string"
 import { gfmTaskListItem } from "micromark-extension-gfm-task-list-item"
@@ -21,6 +22,15 @@ import {
 import { parseFrontmatter } from "./parse-frontmatter"
 import { removeLeadingEmoji } from "./emoji"
 
+// Type guards
+function isHeading(node: Node): node is Heading {
+  return node.type === "heading"
+}
+
+function isListItem(node: Node): node is ListItem {
+  return node.type === "listItem"
+}
+
 /**
  * Extract metadata from a note.
  *
@@ -39,11 +49,11 @@ export const parseNote = memoize((id: NoteId, content: string): Note => {
 
   const { frontmatter, content: contentWithoutFrontmatter } = parseFrontmatter(content)
 
-  function visitNode(node: Node) {
+  function visitNode(node: Node & { data?: { id?: string, name?: string }, checked?: boolean }) {
     switch (node.type) {
       case "heading": {
         // Only use the first heading
-        if (node.depth > 1 || title) return
+        if (!isHeading(node) || node.depth > 1 || title) return
 
         title = toString(node)
 
@@ -57,6 +67,7 @@ export const parseNote = memoize((id: NoteId, content: string): Note => {
 
       case "embed":
       case "wikilink": {
+        if (!node.data?.id) return
         links.add(node.data.id)
 
         if (isValidDateString(node.data.id)) {
@@ -66,10 +77,11 @@ export const parseNote = memoize((id: NoteId, content: string): Note => {
       }
 
       case "tag": {
+        if (!node.data?.name) return
         // Add all parent tags (e.g. "foo/bar/baz" => "foo", "foo/bar", "foo/bar/baz")
-        node.data.name.split("/").forEach((_, index) => {
+        node.data.name.split("/").forEach((_: string, index: number) => {
           tags.add(
-            node.data.name
+            node.data!.name!
               .split("/")
               .slice(0, index + 1)
               .join("/"),
@@ -79,6 +91,7 @@ export const parseNote = memoize((id: NoteId, content: string): Note => {
       }
 
       case "listItem": {
+        if (!isListItem(node)) return
         if (typeof node.checked === "boolean") {
           tasks.push({
             completed: node.checked === true,

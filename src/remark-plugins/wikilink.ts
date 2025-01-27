@@ -1,16 +1,40 @@
-import { Root } from "mdast"
+import { Root, Literal } from "mdast"
 import { Extension as FromMarkdownExtension } from "mdast-util-from-markdown"
 import { codes } from "micromark-util-symbol/codes"
 import { Code, Construct, Extension, HtmlExtension, State, Tokenizer } from "micromark-util-types"
 import { Plugin } from "unified"
-import { Node } from "unist"
+
+interface Wikilink extends Literal {
+  type: "wikilink"
+  value: string
+  data: { id: string; text: string }
+}
+
+declare module "mdast" {
+  interface PhrasingContentMap {
+    wikilink: Wikilink
+  }
+  interface RootContentMap {
+    wikilink: Wikilink
+  }
+}
+
+declare module "micromark-util-types" {
+  interface TokenTypeMap {
+    wikilink: "wikilink"
+    wikilinkMarker: "wikilinkMarker"
+    wikilinkId: "wikilinkId"
+    wikilinkSeparator: "wikilinkSeparator"
+    wikilinkText: "wikilinkText"
+  }
+}
 
 const types = {
-  wikilink: "wikilink",
-  wikilinkMarker: "wikilinkMarker",
-  wikilinkId: "wikilinkId",
-  wikilinkSeparator: "wikilinkSeparator",
-  wikilinkText: "wikilinkText",
+  wikilink: "wikilink" as const,
+  wikilinkMarker: "wikilinkMarker" as const,
+  wikilinkId: "wikilinkId" as const,
+  wikilinkSeparator: "wikilinkSeparator" as const,
+  wikilinkText: "wikilinkText" as const,
 }
 
 /** Syntax extension (text -> tokens) */
@@ -191,26 +215,13 @@ export function wikilinkHtml(): HtmlExtension {
     },
     exit: {
       [types.wikilink]() {
-        this.tag(`<wikilink id="${id}" text="${text || ""}" />`)
+        this.tag(`<wikilink id="${id}" text="${text || ""}" value="${id}" />`)
 
         // Reset state
         id = undefined
         text = undefined
       },
     },
-  }
-}
-
-// Register wikilink as an mdast node type
-interface Wikilink extends Node {
-  type: "wikilink"
-  value: string
-  data: { id: string; text: string }
-}
-
-declare module "mdast" {
-  interface StaticPhrasingContentMap {
-    wikilink: Wikilink
   }
 }
 
@@ -238,8 +249,8 @@ export function wikilinkFromMarkdown(): FromMarkdownExtension {
 
         if (node.type === "wikilink") {
           node.data.id = id || ""
-          node.data.text = text || ""
-          node.value = text || id || ""
+          node.data.text = text || id || ""
+          node.value = id || ""
         }
 
         this.exit(token)

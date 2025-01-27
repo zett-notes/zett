@@ -1,18 +1,49 @@
 // Copied from wikilink.ts
 
-import { Root } from "mdast"
+import { Root, Literal } from "mdast"
 import { Extension as FromMarkdownExtension } from "mdast-util-from-markdown"
 import { codes } from "micromark-util-symbol/codes"
 import { Code, Construct, Extension, HtmlExtension, State, Tokenizer } from "micromark-util-types"
 import { Plugin } from "unified"
-import { Node } from "unist"
+
+// Register embed as an mdast node type
+interface Embed extends Literal {
+  type: "embed"
+  value: string
+  data: { id: string; text: string }
+}
+
+declare module "micromark-util-types" {
+  interface TokenTypeMap {
+    embed: "embed"
+    embedMarker: "embedMarker"
+    embedId: "embedId"
+    embedSeparator: "embedSeparator"
+    embedText: "embedText"
+  }
+}
+
+declare module "mdast-util-from-markdown" {
+  interface Content {
+    embed: Embed
+  }
+}
+
+declare module "mdast" {
+  interface PhrasingContentMap {
+    embed: Embed
+  }
+  interface RootContentMap {
+    embed: Embed
+  }
+}
 
 const types = {
-  embed: "embed",
-  embedMarker: "embedMarker",
-  embedId: "embedId",
-  embedSeparator: "embedSeparator",
-  embedText: "embedText",
+  embed: "embed" as const,
+  embedMarker: "embedMarker" as const,
+  embedId: "embedId" as const,
+  embedSeparator: "embedSeparator" as const,
+  embedText: "embedText" as const,
 }
 
 /** Syntax extension (text -> tokens) */
@@ -207,25 +238,13 @@ export function embedHtml(): HtmlExtension {
     },
     exit: {
       [types.embed]() {
-        this.tag(`<embed id="${id}" text="${text || id}" />`)
+        this.tag(`<embed id="${id}" text="${text || id}" value="${id}" />`)
 
         // Reset state
         id = undefined
         text = undefined
       },
     },
-  }
-}
-
-// Register embed as an mdast node type
-interface Embed extends Node {
-  type: "embed"
-  data: { id: string; text: string }
-}
-
-declare module "mdast" {
-  interface StaticPhrasingContentMap {
-    embed: Embed
   }
 }
 
@@ -238,7 +257,7 @@ export function embedFromMarkdown(): FromMarkdownExtension {
   return {
     enter: {
       [types.embed](token) {
-        this.enter({ type: "embed", data: { id: "", text: "" } }, token)
+        this.enter({ type: "embed", value: "", data: { id: "", text: "" } }, token)
       },
       [types.embedId](token) {
         id = this.sliceSerialize(token)
@@ -254,6 +273,7 @@ export function embedFromMarkdown(): FromMarkdownExtension {
         if (node.type === "embed") {
           node.data.id = id || ""
           node.data.text = text || id || ""
+          node.value = id || ""
         }
 
         this.exit(token)

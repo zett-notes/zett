@@ -18,15 +18,15 @@ runTests([
   // Valid wikilinks
   {
     input: `[[123]]`,
-    output: `<p><wikilink id="123" text="" /></p>`,
+    output: `<p><wikilink id="123" text="" value="123" /></p>`,
   },
   {
     input: `[[[123]]]`,
-    output: `<p>[<wikilink id="123" text="" />]</p>`,
+    output: `<p>[<wikilink id="123" text="" value="123" />]</p>`,
   },
   {
     input: `[[[[123]]]]`,
-    output: `<p>[[<wikilink id="123" text="" />]]</p>`,
+    output: `<p>[[<wikilink id="123" text="" value="123" />]]</p>`,
   },
   {
     input: `\`\`\`
@@ -41,45 +41,45 @@ runTests([
   },
   {
     input: `_[[123]]_`,
-    output: `<p><em><wikilink id="123" text="" /></em></p>`,
+    output: `<p><em><wikilink id="123" text="" value="123" /></em></p>`,
   },
   {
     input: `- [[123]]`,
     output: `<ul>
-<li><wikilink id="123" text="" /></li>
+<li><wikilink id="123" text="" value="123" /></li>
 </ul>`,
   },
   {
     input: `[[123|hello]]`,
-    output: `<p><wikilink id="123" text="hello" /></p>`,
+    output: `<p><wikilink id="123" text="hello" value="123" /></p>`,
   },
   {
     input: `[[123|hello world]]`,
-    output: `<p><wikilink id="123" text="hello world" /></p>`,
+    output: `<p><wikilink id="123" text="hello world" value="123" /></p>`,
   },
   {
     input: `[[123|hello]] [[456]]`,
-    output: `<p><wikilink id="123" text="hello" /> <wikilink id="456" text="" /></p>`,
+    output: `<p><wikilink id="123" text="hello" value="123" /> <wikilink id="456" text="" value="456" /></p>`,
   },
   {
     input: `[[123x]]`,
-    output: `<p><wikilink id="123x" text="" /></p>`,
+    output: `<p><wikilink id="123x" text="" value="123x" /></p>`,
   },
   {
     input: `[[x]]`,
-    output: `<p><wikilink id="x" text="" /></p>`,
+    output: `<p><wikilink id="x" text="" value="x" /></p>`,
   },
   {
     input: `[[x|y]]`,
-    output: `<p><wikilink id="x" text="y" /></p>`,
+    output: `<p><wikilink id="x" text="y" value="x" /></p>`,
   },
   {
     input: `[[Hello world|foo]]`,
-    output: `<p><wikilink id="Hello world" text="foo" /></p>`,
+    output: `<p><wikilink id="Hello world" text="foo" value="Hello world" /></p>`,
   },
   {
     input: `[[foo.bar]]`,
-    output: `<p><wikilink id="foo.bar" text="" /></p>`,
+    output: `<p><wikilink id="foo.bar" text="" value="foo.bar" /></p>`,
   },
 
   // Invalid wikilinks

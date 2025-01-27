@@ -8,51 +8,42 @@ export const REPO_DIR = "/repo"
 const DEFAULT_BRANCH = "main"
 
 export async function gitClone(repo: GitHubRepository, user: GitHubUser) {
-  try {
-    const options: Parameters<typeof git.clone>[0] = {
-      fs,
-      http,
-      dir: REPO_DIR,
-      corsProxy: import.meta.env.DEV 
-        ? "https://cors.isomorphic-git.org"  // Use public proxy in dev
-        : "/cors-proxy",  // Use Netlify proxy in production
-      url: `https://github.com/${repo.owner}/${repo.name}`,
-      ref: DEFAULT_BRANCH,
-      singleBranch: true,
-      depth: 1,
-      onMessage: (message) => console.debug("onMessage", message),
-      onProgress: (progress) => console.debug("onProgress", progress),
-      onAuth: () => ({ username: user.login, password: user.token }),
-    }
+  console.log("Starting git clone with options:", { dir: REPO_DIR, url: `https://github.com/${repo.owner}/${repo.name}`, ref: DEFAULT_BRANCH, user: user.login })
 
-    // Wipe file system
-    // TODO: Only remove the repo directory instead of wiping the entire file system
-    // Blocked by https://github.com/isomorphic-git/lightning-fs/issues/71
-    fsWipe()
+  // Wipe file system
+  console.log("Wiping filesystem...")
+  fsWipe()
 
-    // Clone repo
-    let stopTimer = startTimer(`git clone ${options.url} ${options.dir}`)
-    await git.clone(options)
-    stopTimer()
+  // Clone repo
+  console.log("Starting clone operation...")
+  let stopTimer = startTimer(`git clone https://github.com/${repo.owner}/${repo.name} ${REPO_DIR}`)
 
-    // Set user in git config
-    stopTimer = startTimer(`git config user.name "${user.name}"`)
-    await git.setConfig({ fs, dir: REPO_DIR, path: "user.name", value: user.name })
-    stopTimer()
-
-    // Set email in git config
-    stopTimer = startTimer(`git config user.email "${user.email}"`)
-    await git.setConfig({ fs, dir: REPO_DIR, path: "user.email", value: user.email })
-    stopTimer()
-  } catch (error: unknown) {
-    if (error instanceof Error && error.message.includes('Filesystem not initialized')) {
-      console.log('Waiting for filesystem to initialize...')
-      // Wait a bit and retry
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      return gitClone(repo, user)
-    }
-    throw error
+  const options: Parameters<typeof git.clone>[0] = {
+    fs,
+    http,
+    dir: REPO_DIR,
+    corsProxy: "/cors-proxy", // będzie przekierowane przez Netlify Edge Function w produkcji
+    url: `https://github.com/${repo.owner}/${repo.name}`,
+    ref: DEFAULT_BRANCH,
+    singleBranch: true,
+    depth: 1,
+    onMessage: (message) => console.debug("onMessage", message),
+    onProgress: (progress) => console.debug("onProgress", progress),
+    onAuth: () => ({ username: user.login, password: user.token }),
   }
+
+  await git.clone(options)
+  stopTimer()
+
+  // Set user in git config
+  stopTimer = startTimer(`git config user.name "${user.name}"`)
+  await git.setConfig({ fs, dir: REPO_DIR, path: "user.name", value: user.name })
+  stopTimer()
+
+  // Set email in git config
+  stopTimer = startTimer(`git config user.email "${user.email}"`)
+  await git.setConfig({ fs, dir: REPO_DIR, path: "user.email", value: user.email })
+  stopTimer()
 }
 
 export async function gitPull(user: GitHubUser) {

@@ -74,7 +74,7 @@ Explain the proposed solution:
 ### 5. References
 ```markdown
 ### References
-1. [Link Description](url)
+1. [Link Description](mdc:url)
 2. Related code: \`path/to/file.tsx\`
 ```
 
@@ -131,7 +131,7 @@ import React from "react"
    - Time: ~Xmin
 
 ### References
-1. [Documentation](url)
+1. [Documentation](mdc:url)
 2. Related: \`src/existing-file.tsx\`
 ```
 

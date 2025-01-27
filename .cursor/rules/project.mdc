@@ -5,6 +5,7 @@ globs: *,**/*
 
 ## Documentation Standards
 For changelog management and documentation, refer to @changelog.mdc
+For project upgrades proposals refer to [proposal.mdc](mdc:.cursor/rules/proposal.mdc)
 
 
 # Zett Technical Guidelines

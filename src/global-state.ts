@@ -1,9 +1,9 @@
 import { Searcher } from "fast-fuzzy"
-import git, { WORKDIR } from "isomorphic-git"
+import git, { WORKDIR, TREE } from "isomorphic-git"
 import { atom } from "jotai"
 import { atomWithMachine } from "jotai-xstate"
 import { atomWithStorage, selectAtom } from "jotai/utils"
-import { assign, createMachine, raise } from "xstate"
+import { assign, createMachine, fromPromise, setup, sendParent } from "xstate"
 import { z } from "zod"
 import {
   GitHubRepository,
@@ -11,13 +11,11 @@ import {
   Note,
   NoteId,
   Template,
-  githubUserSchema,
   templateSchema,
 } from "./schema"
 import { fs, fsWipe } from "./utils/fs"
 import {
   REPO_DIR,
-  getRemoteOriginUrl,
   gitAdd,
   gitClone,
   gitCommit,
@@ -25,6 +23,7 @@ import {
   gitPush,
   gitRemove,
   isRepoSynced,
+  getRemoteOriginUrl,
 } from "./utils/git"
 import { parseNote } from "./utils/parse-note"
 import { removeTemplateFrontmatter } from "./utils/remove-template-frontmatter"
@@ -39,7 +38,7 @@ const GITHUB_USER_KEY = "github_user"
 const MARKDOWN_FILES_KEY = "markdown_files"
 
 // -----------------------------------------------------------------------------
-// State machine
+// Types
 // -----------------------------------------------------------------------------
 
 type Context = {
@@ -56,390 +55,182 @@ type Event =
   | { type: "SYNC" }
   | { type: "WRITE_FILES"; markdownFiles: Record<string, string>; commitMessage?: string }
   | { type: "DELETE_FILE"; filepath: string }
+  | { type: string; data?: { markdownFiles?: Record<string, string> } }
+
+type CompleteEvent<TData> = { type: "complete"; data: TData }
+type ErrorEvent = { type: "error"; data: Error }
+
+type ServiceEvent =
+  | CompleteEvent<{ githubUser: GitHubUser }>
+  | CompleteEvent<{ githubRepo: GitHubRepository; markdownFiles: Record<string, string> }>
+  | CompleteEvent<{ markdownFiles: Record<string, string> }>
+  | CompleteEvent<{ isSynced: boolean }>
+  | ErrorEvent
+
+type AnyEvent = Event | ServiceEvent
+
+// -----------------------------------------------------------------------------
+// Actors
+// -----------------------------------------------------------------------------
+
+const resolveUserActor = fromPromise(async () => {
+  const githubUser = getGitHubUserFromLocalStorage()
+  if (!githubUser) {
+    throw new Error("No GitHub user found in local storage")
+  }
+  return { githubUser }
+})
+
+const resolveRepoActor = fromPromise(async () => {
+  const url = await getRemoteOriginUrl()
+  if (!url) throw new Error("No remote origin URL found")
+  
+  const match = url.value?.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/)
+  if (!match) throw new Error("Invalid GitHub repository URL")
+  
+  const [, owner, name] = match
+  const githubRepo = { owner, name }
+  const markdownFiles = await getMarkdownFilesFromFs(REPO_DIR)
+  
+  return { githubRepo, markdownFiles }
+})
+
+const cloneRepoActor = fromPromise(async ({ input }: { input: { githubUser: GitHubUser; githubRepo: GitHubRepository | null } }) => {
+  const { githubUser, githubRepo } = input
+  
+  if (!githubRepo) {
+    throw new Error("No repository selected")
+  }
+  
+  await gitClone(githubRepo, githubUser)
+  const markdownFiles = await getMarkdownFilesFromFs(REPO_DIR)
+  return { markdownFiles }
+})
+
+const pullActor = fromPromise(async ({ input }: { input: { githubUser: GitHubUser } }) => {
+  const { githubUser } = input
+  await gitPull(githubUser)
+  const markdownFiles = await getMarkdownFilesFromFs(REPO_DIR)
+  return { markdownFiles }
+})
+
+const pushActor = fromPromise(async ({ input }: { input: { githubUser: GitHubUser; commitMessage?: string } }) => {
+  const { githubUser, commitMessage } = input
+  const message = commitMessage ?? "Update notes"
+  await gitAdd([REPO_DIR])
+  await gitCommit(message)
+  await gitPush(githubUser)
+})
+
+const writeFilesActor = fromPromise(async ({ input }: { input: { markdownFiles: Record<string, string> } }) => {
+  const { markdownFiles } = input
+  await Promise.all(
+    Object.entries(markdownFiles).map(async ([filepath, content]) => {
+      await fs.promises.writeFile(filepath, content)
+    })
+  )
+})
+
+const deleteFileActor = fromPromise(async ({ input }: { input: { filepath: string } }) => {
+  const { filepath } = input
+  await fs.promises.unlink(filepath)
+  await gitRemove(filepath)
+})
+
+const checkStatusActor = fromPromise(async () => {
+  const isSynced = await isRepoSynced()
+  return { isSynced }
+})
 
 function createGlobalStateMachine() {
-  return createMachine(
-    {
-      /** @xstate-layout N4IgpgJg5mDOIC5RQDYHsBGBDFA6ATnGigG4CWAdlAKqxj4DEEaFYulJaA1m6pjgSKlKNOvgQc0AYywAXMiwDaABgC6K1YlAAHNLDLyWWkAA9EAFgDsuABwBmS8qcBWSwEZnygGxu3AGhAAT0QAJhDzXEsvAE5lSxtY6OdfEJsAXzSAvmw8QlhicipaegZ6fDR8XG0UOQAzCoBbXGyBPIKRYvFJGUMKDQ1jXX1e4zMEEPdcaOmvOxCvELt7BwDghDdlaNtHczdwkOc7Nys7DKz0HNx9KFYIAHkAV1kGAGUASQBxADkAfTevgZIEBDAwKCijRBeZxeXDQkKxGzhZz2BKrUJHXAHRx2KEbBLI06ZEAtPDXW5vCivT6-O7UAAqgJ0elBRiBY2c5i2HiiyWiXnizhCaIQ5nCuHMuy8NjcPnM-Ls0TOxIuAjJkApgnywioACUwLomCw2JIeM0VaSyDd1RRNe1dfq0BIKJwemD+mpBsyRmzEABaczOXBeWaihLHaI2Vx2YWWOwRZQBqVeZRuabxEJKklXS3km1tbVQPUGsoVKo1WT1fBNLNqiAa-OFQsOp0uuRutSM4FesEQ8ZWIOC5SHQ5xGzuLzC5EhcXjzxzNzuMeZ83Zq11m0UNCyADC6FurwAogAZA-buk-HUHgAKd07IO9oHZi0xx05CcR0UszmFXn7ouDvjOHyEqxsu-AWmuGpSHuIhFmghqsOwzrcLwK61lBMH2roLbSG2Sgdh6QL3j2PoIF+Ni2BKOIuAs8LmMK0R2IG9iMQmYRfnylhgZc6E2tBLCwQ6pT4OUlTVHUjRmuBq65rg-EUIJ2HdHhfQEZoRHdqyj6IDYyh2LgezQsmcquDEMZuPpdhMdZyj2IKDjcaqObWnJe6QIeJ5nhe163oRTLDCR2kIPZL4SrE5gfl+wq+DKkQLks0QhAubFeI5EGyfJkByQAFlgVDGhAKBgAwADqOpvHSB4-AAYm8J4vHemngqRn64MoqROP+rjSlC0UKtYtnmFZlgShyn7pESNbOeurlGhAOV5TA7CFcVAAix4HpVNV1QejUBVppiIK1QH2DKUrmO1QGWNFcrTskwaDt10LmGlMkuZl81SLl+W4AA7vgoJUNVZBFbACHGshppTZBfFuZ931Lf9gNQMDoM4a6+HqH5Xb7c1QXQsobWMdK0S7HKNizNFw6RLM0QLpyumilxk1odNGFzQtP1I-IQMg3AwmiWWElVlJPFs7DHNfYtbDcyIqNwOjKnuup-ksnjh1kXGQYWQqn57HGcRU0xNNLOEsS-u1E3nNJvGzbcnNLRAYBFTzKN8+DSGcFDrMw3bWVSz9Tsu3LfOK70yuerjvauITjHxaZCz2NFiIDbGSVRJs3hDq9tsfQ7bBB2ArvywLpbiRWknQxlcP57ghfF6Hynh2pkdq72sYRBszjd5Y47eMn-YhLZsxLAqGxuFbyo2+LfvzbAgQUFIVwPFIUhwGDLwAJpfNue1t6RMrWJ+pN8vOYRjvRQShAcFF6UPvh2N45EZiz0++3n8+L7gJaMFvO97w+DWAY2rHChJ+dqThRzfivuMPkFFuo2CGkkWM0oc4zw-gvJe2gHgoBQCID2JpUJv2rhzT+WCcF4KoGHdsWMVY433kFYMhMUxOFSKAnkl81iLCiOKBc8whyLB1mg9+NcyFVAofgn+QsK4iyru9URmDxG4JENQzGADAoa2hPAqyMomLzFjAqYUSVu5BiHp1BIfIsTCJIfbMR2DlFUAYOog67JYzijiMkdqFkAzIiMamCiiCPCJTCoxRUr8xYiNIYo7BsBsr4OYIhQhosnKRNsdEh4sSVFNxoc49WYxLBJTavCZIQF+SLDpkYxw04UhWSlO4CMvdrHyKiV-GJcTHFSPLpWasPsbFZTsRk9pUBVGqVoa3QBrj9K+B8KTMcDhpQ2CMbKXAj8pR7DCKTIazgmkzQwa0wZ+DcnR0cAZewEwFgRSiFYIxrgti7EjL+MmqYJQ7PZmkr+X0wBSC4CIF4sg5AZIIZDIhES+lz0UZ875vz-myAySMiOGko6kSWDCX8dMRrSnCAzIxFN9KLAAuc3w9hXkS3eUvSFPyqB-IBWDBJEMvYgpSWCq4ELspfMpVAalsLYDwo7G4OhxEXGIFHrCCMDhUgGO7kKGBHU7mxD4Q-IcbgSWzxZR8tlUKqUwsBZ08s3TknpWaWSnK7LoU0t5WMxFDCNYxEJt3QUMp2KuGujK5B4oL7TF2DraEKq9nko1RyrlgK-672xoKvJkJUhTEFFYQccY5jREqccNqCYkgnCSBMF6SpNxO3gECEk4yNFjF9BPCIN9dKbHslKRKwpfTTgWEkMcMR-wosjK9BsHQxCFqFQgLW84lh7AzhMBU0C1iIO2AmPYopDjHBGjsx4shu0RuCgqcUyRe531jQsBiZb5hwl1hMUtJKl29hLTiTEyIK0ZpxAkaVaxOT6SsB4CmJSn2pXCUylyHasJoBPaROtbgDIym7mPBmUZJyRlhPMQ97hkiLCzdbUFLlNw7jhn+-Gq6jjJn3UxK5EHY7jiGuTQdyqP2Gt2ZhJsuh0NANXUOREqQPwWQpi6tY8QIj8kGvYWyDh32Ic-RRuaNHi02AouWpw17q3Rhgb4CMkRGYWV-I-CKfGp5IcE-bAOMBhN+mNjsVZ3hgyM2k2sPYFNMSM3agqZMRLfU1y0wVIqOn1jTmKTEBUVkjjIJuhsKYelSbyg-EsOzksEYywBg3UGzmowgN0u4fqY0JwyYcPpeI-nfARU-Nssjb0NP+zC3XZ2RcQ5OatRMxArhAMJUjPMBYFl3DRShNYKIVl06m2JiFslzn-SE3E5W-FCQTOhG8BRPYTgZSgODBMTr-TFGwBXmvWAebVbld7WJwJKIkrnxGkYm+bU5gpgsk-KcM3wVfx-s55rXrpgJhaxsBrMDH6rsCTx2MHhOSqbkXls75CHFQEu74IMU34gRh8L3Th18fADjgQcZE-JTtqvIZkqgl24iwgsoxEa0JDjbplciLYqzRNDSHMzfj5G3mzfVaarVNLnPnRWaZc2yIlWJplSiTEOIoS6SJ-EDIGQgA */
-      id: "global",
-      tsTypes: {} as import("./global-state.typegen").Typegen0,
-      schema: {} as {
-        context: Context
-        events: Event
-        services: {
-          resolveUser: {
-            data: { githubUser: GitHubUser }
+  return setup({
+    types: {
+      context: {} as Context,
+      events: {} as AnyEvent,
+      input: undefined,
+      output: undefined,
+    },
+    actions: {
+      setGitHubUser: assign({
+        githubUser: ({ event }) => {
+          if (event.type === "SIGN_IN") return event.githubUser
+          if (event.type === "complete" && "githubUser" in event.data) {
+            return event.data.githubUser
           }
-          resolveRepo: {
-            data: { githubRepo: GitHubRepository; markdownFiles: Record<string, string> }
+          return null
+        },
+      }),
+      setGitHubRepo: assign({
+        githubRepo: ({ event }) => {
+          if (event.type === "SELECT_REPO") return event.githubRepo
+          if (event.type === "complete" && "githubRepo" in event.data) {
+            return event.data.githubRepo
           }
-          cloneRepo: {
-            data: { markdownFiles: Record<string, string> }
+          return null
+        },
+      }),
+      setMarkdownFiles: assign({
+        markdownFiles: ({ event }: any) => {
+          console.debug("setMarkdownFiles event:", event)
+          // @ts-ignore - XState types are not up to date
+          if (event.output?.markdownFiles) {
+            // @ts-ignore - XState types are not up to date
+            console.debug("setMarkdownFiles output:", event.output.markdownFiles)
+            // @ts-ignore - XState types are not up to date
+            return event.output.markdownFiles
           }
-          pull: {
-            data: { markdownFiles: Record<string, string> }
+          console.debug("setMarkdownFiles returning empty object")
+          return {}
+        },
+      }),
+      mergeMarkdownFiles: assign({
+        markdownFiles: ({ context, event }) => {
+          if (event.type === "WRITE_FILES") {
+            return {
+              ...context.markdownFiles,
+              ...event.markdownFiles,
+            }
           }
-          push: {
-            data: void
+          return context.markdownFiles
+        },
+      }),
+      deleteMarkdownFile: assign({
+        markdownFiles: ({ context, event }) => {
+          if (event.type === "DELETE_FILE") {
+            const { [event.filepath]: _, ...rest } = context.markdownFiles
+            return rest
           }
-          checkStatus: {
-            data: { isSynced: boolean }
+          return context.markdownFiles
+        },
+      }),
+      clearGitHubUser: assign({ githubUser: () => null }),
+      clearGitHubRepo: assign({ githubRepo: () => null }),
+      clearMarkdownFiles: assign({ markdownFiles: () => ({}) }),
+      setError: assign({
+        error: ({ event }) => {
+          if (event.type === "error") {
+            return event.data
           }
-          writeFiles: {
-            data: void
-          }
-          deleteFile: {
-            data: void
-          }
+          return null
+        },
+      }),
+      logError: ({ event }) => {
+        if (event.type === "error") {
+          console.error(event.data)
         }
       },
-      predictableActionArguments: true,
-      initial: "resolvingUser",
-      context: {
-        githubUser: null,
-        githubRepo: null,
-        markdownFiles: {},
-        error: null,
-      },
-      states: {
-        resolvingUser: {
-          invoke: {
-            src: "resolveUser",
-            onDone: {
-              target: "signedIn",
-              actions: "setGitHubUser",
-            },
-            onError: "signedOut",
-          },
-        },
-        signedOut: {
-          entry: [
-            "clearGitHubUser",
-            "clearGitHubUserLocalStorage",
-            "clearMarkdownFilesLocalStorage",
-            "clearFileSystem",
-            "setSampleMarkdownFiles",
-          ],
-          exit: ["clearMarkdownFiles"],
-          on: {
-            SIGN_IN: {
-              target: "signedIn",
-              actions: ["setGitHubUser"],
-            },
-          },
-        },
-        signedIn: {
-          on: {
-            SIGN_OUT: "signedOut",
-          },
-          initial: "resolvingRepo",
-          states: {
-            resolvingRepo: {
-              invoke: {
-                src: "resolveRepo",
-                onDone: {
-                  target: "cloned",
-                  actions: ["setGitHubRepo", "setMarkdownFiles", "setMarkdownFilesLocalStorage"],
-                },
-                onError: "notCloned",
-              },
-            },
-            notCloned: {
-              on: {
-                SELECT_REPO: "cloningRepo",
-              },
-            },
-            cloningRepo: {
-              entry: ["setGitHubRepo", "clearMarkdownFiles", "clearMarkdownFilesLocalStorage"],
-              invoke: {
-                src: "cloneRepo",
-                onDone: {
-                  target: "cloned.sync.success",
-                  actions: ["setMarkdownFiles", "setMarkdownFilesLocalStorage"],
-                },
-                onError: {
-                  target: "notCloned",
-                  actions: ["clearGitHubRepo", "setError"],
-                },
-              },
-            },
-            cloned: {
-              on: {
-                SELECT_REPO: "cloningRepo",
-              },
-              type: "parallel",
-              states: {
-                change: {
-                  initial: "idle",
-                  states: {
-                    idle: {
-                      on: {
-                        WRITE_FILES: "writingFiles",
-                        DELETE_FILE: "deletingFile",
-                      },
-                    },
-                    writingFiles: {
-                      entry: ["mergeMarkdownFiles", "mergeMarkdownFilesLocalStorage"],
-                      invoke: {
-                        src: "writeFiles",
-                        onDone: {
-                          target: "idle",
-                          actions: raise("SYNC"),
-                        },
-                        onError: {
-                          target: "idle",
-                          actions: "setError",
-                        },
-                      },
-                    },
-                    deletingFile: {
-                      entry: ["deleteMarkdownFile", "deleteMarkdownFileLocalStorage"],
-                      invoke: {
-                        src: "deleteFile",
-                        onDone: {
-                          target: "idle",
-                          actions: raise("SYNC"),
-                        },
-                        onError: {
-                          target: "idle",
-                          actions: "setError",
-                        },
-                      },
-                    },
-                  },
-                },
-                sync: {
-                  initial: "pulling",
-                  states: {
-                    success: {
-                      on: {
-                        SYNC: "pulling",
-                      },
-                    },
-                    error: {
-                      entry: "logError",
-                      on: {
-                        SYNC: "pulling",
-                      },
-                    },
-                    pulling: {
-                      always: [
-                        // Don't pull if offline
-                        { target: "success", cond: "isOffline" },
-                      ],
-                      invoke: {
-                        src: "pull",
-                        onDone: {
-                          target: "pushing",
-                          actions: ["setMarkdownFiles", "setMarkdownFilesLocalStorage"],
-                        },
-                        onError: "error",
-                      },
-                    },
-                    pushing: {
-                      always: [
-                        // Don't push if offline
-                        { target: "success", cond: "isOffline" },
-                      ],
-                      invoke: {
-                        src: "push",
-                        onDone: "checkingStatus",
-                        onError: "error",
-                      },
-                    },
-                    checkingStatus: {
-                      on: {
-                        SYNC: "pulling",
-                      },
-                      invoke: {
-                        src: "checkStatus",
-                        onDone: [
-                          {
-                            target: "success",
-                            cond: "isSynced",
-                          },
-                          // If not synced, pull again
-                          {
-                            target: "pulling",
-                          },
-                        ],
-                        onError: "error",
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    {
-      guards: {
-        isOffline: () => !navigator.onLine,
-        isSynced: (_, event) => event.data.isSynced,
-      },
-      services: {
-        resolveUser: async () => {
-          // First, check URL params for user metadata
-          const token = new URLSearchParams(window.location.search).get("user_token")
-          const login = new URLSearchParams(window.location.search).get("user_login")
-          const name = new URLSearchParams(window.location.search).get("user_name")
-          const email = new URLSearchParams(window.location.search).get("user_email")
-
-          if (token && login && name && email) {
-            // Save user metadata to localStorage
-            localStorage.setItem(GITHUB_USER_KEY, JSON.stringify({ token, login, name, email }))
-
-            const searchParams = new URLSearchParams(window.location.search)
-
-            // Remove user metadata from URL
-            searchParams.delete("user_token")
-            searchParams.delete("user_login")
-            searchParams.delete("user_name")
-            searchParams.delete("user_email")
-
-            window.location.replace(
-              `${window.location.pathname}${
-                searchParams.toString() ? `?${searchParams.toString()}` : ""
-              }`,
-            )
-
-            return { githubUser: { token, login, name, email } }
-          }
-
-          // Next, check localStorage for user metadata
-          const githubUser = JSON.parse(localStorage.getItem(GITHUB_USER_KEY) ?? "null")
-          return { githubUser: githubUserSchema.parse(githubUser) }
-        },
-        resolveRepo: async () => {
-          const stopTimer = startTimer("resolveRepo()")
-
-          const remoteOriginUrl = await getRemoteOriginUrl()
-
-          // Remove https://github.com/ from the beginning of the URL to get the repo name
-          const repo = String(remoteOriginUrl).replace(/^https:\/\/github.com\//, "")
-
-          const [owner, name] = repo.split("/")
-
-          if (!owner || !name) {
-            throw new Error("Invalid repo")
-          }
-
-          const githubRepo = { owner, name }
-
-          const markdownFiles =
-            getMarkdownFilesFromLocalStorage() ?? (await getMarkdownFilesFromFs(REPO_DIR))
-
-          stopTimer()
-
-          return { githubRepo, markdownFiles }
-        },
-        cloneRepo: async (context, event) => {
-          if (!context.githubUser) throw new Error("Not signed in")
-
-          await gitClone(event.githubRepo, context.githubUser)
-
-          return { markdownFiles: await getMarkdownFilesFromFs(REPO_DIR) }
-        },
-        pull: async (context) => {
-          if (!context.githubUser) throw new Error("Not signed in")
-
-          await gitPull(context.githubUser)
-
-          return { markdownFiles: await getMarkdownFilesFromFs(REPO_DIR) }
-        },
-        push: async (context) => {
-          if (!context.githubUser) throw new Error("Not signed in")
-
-          await gitPush(context.githubUser)
-        },
-        checkStatus: async () => {
-          return { isSynced: await isRepoSynced() }
-        },
-        writeFiles: async (context, event) => {
-          if (!context.githubUser) throw new Error("Not signed in")
-
-          const {
-            markdownFiles,
-            commitMessage = `Update ${Object.keys(markdownFiles).join(" ")}`,
-          } = event
-
-          // Write files to file system
-          Object.entries(markdownFiles).forEach(async ([filepath, content]) => {
-            await fs.promises.writeFile(`${REPO_DIR}/${filepath}`, content, "utf8")
-          })
-
-          // Stage files
-          await gitAdd(Object.keys(markdownFiles))
-
-          // Commit files
-          await gitCommit(commitMessage)
-        },
-        deleteFile: async (context, event) => {
-          if (!context.githubUser) throw new Error("Not signed in")
-
-          const { filepath } = event
-
-          // Delete file from file system
-          await fs.promises.unlink(`${REPO_DIR}/${filepath}`)
-
-          // Stage deletion
-          await gitRemove(filepath)
-
-          // Commit deletion
-          await gitCommit(`Delete ${filepath}`)
-        },
-      },
-      actions: {
-        setGitHubUser: assign({
-          githubUser: (_, event) => {
-            switch (event.type) {
-              case "SIGN_IN":
-                return event.githubUser
-              case "done.invoke.global.resolvingUser:invocation[0]":
-                return event.data.githubUser
-            }
-          },
-        }),
-        clearGitHubUser: assign({
-          githubUser: null,
-        }),
-        clearGitHubUserLocalStorage: () => {
-          localStorage.removeItem(GITHUB_USER_KEY)
-        },
-        setGitHubRepo: assign({
-          githubRepo: (_, event) => {
-            switch (event.type) {
-              case "SELECT_REPO":
-                return event.githubRepo
-              case "done.invoke.global.signedIn.resolvingRepo:invocation[0]":
-                return event.data.githubRepo
-            }
-          },
-        }),
-        clearGitHubRepo: assign({
-          githubRepo: null,
-        }),
-        clearFileSystem: () => {
-          fsWipe()
-        },
-        setMarkdownFiles: assign({
-          markdownFiles: (_, event) => event.data.markdownFiles,
-        }),
-        setSampleMarkdownFiles: assign({
-          markdownFiles: getSampleMarkdownFiles(),
-        }),
-        setMarkdownFilesLocalStorage: (_, event) => {
+      clearGitHubUserLocalStorage: () => localStorage.removeItem(GITHUB_USER_KEY),
+      clearFileSystem: () => fsWipe(),
+      setSampleMarkdownFiles: assign({
+        markdownFiles: () => getSampleMarkdownFiles(),
+      }),
+      setMarkdownFilesLocalStorage: ({ event }) => {
+        if (event.type === "complete" && "markdownFiles" in event.data) {
           localStorage.setItem(MARKDOWN_FILES_KEY, JSON.stringify(event.data.markdownFiles))
-        },
-        mergeMarkdownFiles: assign({
-          markdownFiles: (context, event) => ({
-            ...context.markdownFiles,
-            ...event.markdownFiles,
-          }),
-        }),
-        mergeMarkdownFilesLocalStorage: (context, event) => {
+        }
+      },
+      mergeMarkdownFilesLocalStorage: ({ context, event }) => {
+        if (event.type === "WRITE_FILES") {
           localStorage.setItem(
             MARKDOWN_FILES_KEY,
             JSON.stringify({
@@ -447,34 +238,245 @@ function createGlobalStateMachine() {
               ...event.markdownFiles,
             }),
           )
-        },
-        deleteMarkdownFile: assign({
-          markdownFiles: (context, event) => {
-            const { [event.filepath]: _, ...markdownFiles } = context.markdownFiles
-            return markdownFiles
+        }
+      },
+      deleteMarkdownFileLocalStorage: ({ context, event }) => {
+        if (event.type === "DELETE_FILE") {
+          const { [event.filepath]: _, ...rest } = context.markdownFiles
+          localStorage.setItem(MARKDOWN_FILES_KEY, JSON.stringify(rest))
+        }
+      },
+      clearMarkdownFilesLocalStorage: () => localStorage.removeItem(MARKDOWN_FILES_KEY),
+      syncAction: sendParent({ type: "SYNC" }),
+    },
+    guards: {
+      isOffline: () => !navigator.onLine,
+      isSynced: ({ event }) => {
+        if (event.type === "complete" && "isSynced" in event.data) {
+          return event.data.isSynced
+        }
+        return false
+      },
+    },
+    actors: {
+      resolveUser: resolveUserActor,
+      resolveRepo: resolveRepoActor,
+      cloneRepo: cloneRepoActor,
+      pull: pullActor,
+      push: pushActor,
+      writeFiles: writeFilesActor,
+      deleteFile: deleteFileActor,
+      checkStatus: checkStatusActor
+    },
+  }).createMachine({
+    id: "global",
+    initial: "resolvingUser",
+    context: {
+      githubUser: null,
+      githubRepo: null,
+      markdownFiles: {},
+      error: null,
+    },
+    states: {
+      resolvingUser: {
+        invoke: {
+          src: resolveUserActor,
+          onDone: {
+            target: "#global.signedIn",
+            actions: "setGitHubUser",
           },
-        }),
-        deleteMarkdownFileLocalStorage: (context, event) => {
-          const { [event.filepath]: _, ...markdownFiles } = context.markdownFiles
-          localStorage.setItem(MARKDOWN_FILES_KEY, JSON.stringify(markdownFiles))
+          onError: "#global.signedOut",
         },
-        clearMarkdownFiles: assign({
-          markdownFiles: {},
-        }),
-        clearMarkdownFilesLocalStorage: () => {
-          localStorage.removeItem(MARKDOWN_FILES_KEY)
+      },
+      signedOut: {
+        id: "global.signedOut",
+        entry: [
+          "clearGitHubUser",
+          "clearGitHubUserLocalStorage",
+          "clearMarkdownFilesLocalStorage",
+          "clearFileSystem",
+          "setSampleMarkdownFiles",
+        ],
+        exit: ["clearMarkdownFiles"],
+        on: {
+          SIGN_IN: {
+            target: "#global.signedIn",
+            actions: ["setGitHubUser"],
+          },
         },
-        setError: assign({
-          // TODO: Remove `as Error`
-          error: (_, event) => event.data as Error,
-        }),
-        logError: (_, event) => {
-          console.error(event.data)
+      },
+      signedIn: {
+        id: "global.signedIn",
+        on: {
+          SIGN_OUT: "#global.signedOut",
+        },
+        initial: "resolvingRepo",
+        states: {
+          resolvingRepo: {
+            invoke: {
+              src: resolveRepoActor,
+              onDone: {
+                target: "cloned",
+                actions: ["setGitHubRepo", "setMarkdownFiles", "setMarkdownFilesLocalStorage"],
+              },
+              onError: "notCloned",
+            },
+          },
+          notCloned: {
+            on: {
+              SELECT_REPO: "cloningRepo",
+            },
+          },
+          cloningRepo: {
+            entry: ["setGitHubRepo", "clearMarkdownFiles", "clearMarkdownFilesLocalStorage"],
+            invoke: {
+              src: cloneRepoActor,
+              input: ({ context, event }) => ({
+                githubUser: context.githubUser,
+                githubRepo: event.type === "SELECT_REPO" ? event.githubRepo : null,
+              }),
+              onDone: {
+                target: "cloned.sync.success",
+                actions: ["setMarkdownFiles", "setMarkdownFilesLocalStorage"],
+              },
+              onError: {
+                target: "notCloned",
+                actions: ["clearGitHubRepo", "setError"],
+              },
+            },
+          },
+          cloned: {
+            on: {
+              SELECT_REPO: "cloningRepo",
+            },
+            type: "parallel",
+            states: {
+              change: {
+                initial: "idle",
+                states: {
+                  idle: {
+                    on: {
+                      WRITE_FILES: "writingFiles",
+                      DELETE_FILE: "deletingFile",
+                    },
+                  },
+                  writingFiles: {
+                    entry: ["mergeMarkdownFiles", "mergeMarkdownFilesLocalStorage"],
+                    invoke: {
+                      src: writeFilesActor,
+                      input: ({ event }) => ({
+                        markdownFiles: event.type === "WRITE_FILES" ? event.markdownFiles : {},
+                      }),
+                      onDone: {
+                        target: "idle",
+                        actions: "syncAction",
+                      },
+                      onError: {
+                        target: "idle",
+                        actions: "setError",
+                      },
+                    },
+                  },
+                  deletingFile: {
+                    entry: ["deleteMarkdownFile", "deleteMarkdownFileLocalStorage"],
+                    invoke: {
+                      src: deleteFileActor,
+                      input: ({ event }) => ({
+                        filepath: event.type === "DELETE_FILE" ? event.filepath : "",
+                      }),
+                      onDone: {
+                        target: "idle",
+                        actions: "syncAction",
+                      },
+                      onError: {
+                        target: "idle",
+                        actions: "setError",
+                      },
+                    },
+                  },
+                },
+              },
+              sync: {
+                initial: "checking",
+                states: {
+                  checking: {
+                    invoke: {
+                      src: checkStatusActor,
+                      onDone: [
+                        {
+                          guard: "isSynced",
+                          target: "success",
+                        },
+                        {
+                          target: "pulling",
+                        },
+                      ],
+                      onError: {
+                        target: "error",
+                        actions: "setError",
+                      },
+                    },
+                  },
+                  pulling: {
+                    invoke: {
+                      src: pullActor,
+                      input: ({ context }) => ({
+                        githubUser: context.githubUser,
+                      }),
+                      onDone: {
+                        target: "pushing",
+                        actions: ["setMarkdownFiles", "setMarkdownFilesLocalStorage"],
+                      },
+                      onError: {
+                        target: "error",
+                        actions: "setError",
+                      },
+                    },
+                  },
+                  pushing: {
+                    invoke: {
+                      src: pushActor,
+                      input: ({ context }) => ({
+                        githubUser: context.githubUser,
+                      }),
+                      onDone: "success",
+                      onError: {
+                        target: "error",
+                        actions: "setError",
+                      },
+                    },
+                  },
+                  success: {
+                    on: {
+                      SYNC: "checking",
+                    },
+                  },
+                  error: {
+                    on: {
+                      SYNC: "checking",
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     },
-  )
+    on: {
+      SIGN_IN: {
+        target: "#global.signedIn",
+        actions: ["setGitHubUser"],
+      },
+      SIGN_OUT: {
+        target: "#global.signedOut",
+      },
+    },
+  })
 }
+
+const globalStateMachine = createGlobalStateMachine()
+export const globalStateMachineAtom = atomWithMachine(() => globalStateMachine)
 
 /** Get cached markdown files from local storage */
 function getMarkdownFilesFromLocalStorage() {
@@ -487,55 +489,53 @@ function getMarkdownFilesFromLocalStorage() {
 /** Walk the file system and return the contents of all markdown files */
 async function getMarkdownFilesFromFs(dir: string) {
   const stopTimer = startTimer("getMarkdownFilesFromFs()")
+  console.debug("Walking directory:", dir)
 
-  const entries = await git.walk({
-    fs,
-    dir,
-    trees: [WORKDIR()],
-    map: async (filepath, [entry]) => {
-      if (!entry) return null
+  async function walkDir(currentDir: string): Promise<[string, string][]> {
+    const entries = await fs.promises.readdir(currentDir)
+    console.debug("Directory contents:", currentDir, entries)
 
-      // Ignore .git directory
-      if (filepath.startsWith(".git")) return
+    const results: [string, string][] = []
 
-      // Ignore non-markdown files
-      if (!filepath.endsWith(".md")) return
+    for (const entry of entries) {
+      const fullPath = `${currentDir}/${entry}`
 
-      // Get file content
-      const content = await entry.content()
+      // Skip .git directory
+      if (entry === '.git') continue
 
-      if (!content) return null
+      try {
+        const stats = await fs.promises.stat(fullPath)
+        
+        if (stats.isDirectory()) {
+          const subResults = await walkDir(fullPath)
+          results.push(...subResults)
+        } else if (entry.endsWith('.md')) {
+          console.debug("Reading markdown file:", fullPath)
+          try {
+            const buffer = await fs.promises.readFile(fullPath)
+            const text = new TextDecoder().decode(buffer)
+            console.debug("File content size:", fullPath, text.length)
+            results.push([fullPath, text])
+          } catch (error) {
+            console.error("Error reading file:", fullPath, error)
+            results.push([fullPath, '']) // Return empty string if file can't be read
+          }
+        }
+      } catch (error) {
+        console.error("Error checking file:", fullPath, error)
+      }
+    }
 
-      console.debug(filepath, (await entry.stat()).size)
+    return results
+  }
 
-      return [filepath, new TextDecoder().decode(content)]
-    },
-  })
-
-  const markdownFiles = Object.fromEntries(entries)
+  const entries = await walkDir(dir)
+  const markdownFilesMap = Object.fromEntries(entries)
+  console.debug("Processed markdown files:", Object.keys(markdownFilesMap))
 
   stopTimer()
-
-  return markdownFiles
+  return markdownFilesMap
 }
-
-export const globalStateMachineAtom = atomWithMachine(createGlobalStateMachine)
-
-export const isRepoNotClonedAtom = selectAtom(globalStateMachineAtom, (state) =>
-  state.matches("signedIn.notCloned"),
-)
-
-export const isCloningRepoAtom = selectAtom(globalStateMachineAtom, (state) =>
-  state.matches("signedIn.cloningRepo"),
-)
-
-export const isRepoClonedAtom = selectAtom(globalStateMachineAtom, (state) =>
-  state.matches("signedIn.cloned"),
-)
-
-export const isSignedOutAtom = selectAtom(globalStateMachineAtom, (state) =>
-  state.matches("signedOut"),
-)
 
 // -----------------------------------------------------------------------------
 // GitHub
@@ -555,29 +555,23 @@ export const githubRepoAtom = selectAtom(
 export const notesAtom = atom((get) => {
   const state = get(globalStateMachineAtom)
   const markdownFiles = state.context.markdownFiles
+  console.debug("Current state:", state.value)
+  console.debug("Markdown files in context:", Object.keys(markdownFiles), markdownFiles)
+  console.debug("Raw markdown files:", markdownFiles)
+  
   const notes: Map<NoteId, Note> = new Map()
 
   // Parse notes
   for (const filepath in markdownFiles) {
-    const id = filepath.replace(/\.md$/, "")
+    console.debug("Processing file:", filepath)
+    // Extract just the filename without path and extension
+    const id = filepath.split('/').pop()?.replace(/\.md$/, '') ?? ''
     const content = markdownFiles[filepath]
+    console.debug("File content:", content ? content.substring(0, 100) + "..." : "null")
     notes.set(id, parseNote(id, content))
   }
 
-  // Derive backlinks
-  for (const { id: sourceId, links } of notes.values()) {
-    for (const targetId of links) {
-      const backlinks = notes.get(targetId)?.backlinks
-      // Skip if the source note is already a backlink
-      if (backlinks?.includes(sourceId)) continue
-
-      // Skip if the source note is linking to itself
-      if (targetId === sourceId) continue
-
-      backlinks?.push(sourceId)
-    }
-  }
-
+  console.debug("Processed notes:", notes.size)
   return notes
 })
 
@@ -725,3 +719,66 @@ export const sidebarAtom = atomWithStorage<"expanded" | "collapsed">("sidebar", 
 export const widthAtom = atomWithStorage<"fixed" | "fill">("width", "fixed")
 
 export const fontAtom = atomWithStorage<"sans" | "serif">("font", "sans")
+
+// Schemas
+const githubUserSchema = z.object({
+  token: z.string(),
+  login: z.string(),
+  name: z.string(),
+  email: z.string(),
+})
+
+/** Get GitHub user from local storage */
+function getGitHubUserFromLocalStorage(): GitHubUser | null {
+  const githubUser = JSON.parse(localStorage.getItem(GITHUB_USER_KEY) ?? "null")
+  if (!githubUser) return null
+  const parsedGithubUser = githubUserSchema.safeParse(githubUser)
+  return parsedGithubUser.success ? parsedGithubUser.data : null
+}
+
+/** Get GitHub repo from filesystem */
+async function getGitHubRepoFromFs(): Promise<GitHubRepository | null> {
+  try {
+    const config = await git.getConfig({ fs, dir: REPO_DIR, path: "remote.origin.url" })
+    if (!config) return null
+    const url = config.value
+    if (!url) return null
+    const match = url.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?$/)
+    if (!match) return null
+    const [, owner, name] = match
+    return { owner, name }
+  } catch (error) {
+    console.error(error)
+    return null
+  }
+}
+
+export const isSignedOutAtom = atom((get) => {
+  const state = get(globalStateMachineAtom)
+  return state.matches("signedOut")
+})
+
+export const isSignedInAtom = atom((get) => {
+  const state = get(globalStateMachineAtom)
+  return state.matches("signedIn")
+})
+
+export const isLoadingAtom = atom((get) => {
+  const state = get(globalStateMachineAtom)
+  return state.matches("resolvingUser")
+})
+
+export const isRepoClonedAtom = selectAtom(
+  globalStateMachineAtom,
+  (state) => state.matches({ signedIn: "cloned" })
+)
+
+export const isCloningRepoAtom = selectAtom(
+  globalStateMachineAtom,
+  (state) => state.matches({ signedIn: "cloningRepo" })
+)
+
+export const isRepoNotClonedAtom = selectAtom(
+  globalStateMachineAtom,
+  (state) => state.matches({ signedIn: "notCloned" })
+)

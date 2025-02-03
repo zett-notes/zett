@@ -108,7 +108,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@storybook/addon-essentials": "^8.4.7",
+    "@storybook/addon-essentials": "^8.5.3",
     "@storybook/addon-interactions": "^8.4.7",
     "@storybook/addon-links": "^8.4.7",
     "@storybook/blocks": "^8.4.7",
